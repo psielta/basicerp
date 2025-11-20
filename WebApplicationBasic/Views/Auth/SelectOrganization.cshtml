@@ -1,0 +1,89 @@
+﻿@model WebApplicationBasic.Models.ViewModels.SelectOrganizationViewModel
+
+@{
+    ViewBag.Title = "Selecionar Organização";
+    Layout = "~/Views/Auth/_AuthLayout.cshtml";
+}
+
+<div class="auth-container">
+    <div class="auth-header">
+        <div class="logo">
+            <i class="bi bi-buildings"></i>
+        </div>
+        <h2>Selecionar Organização</h2>
+        <p>Escolha a organização para acessar</p>
+    </div>
+
+    <div class="auth-body">
+        <div class="user-info-box">
+            <div class="d-flex align-items-center">
+                <div class="user-avatar">
+                    <i class="bi bi-person"></i>
+                </div>
+                <div>
+                    <strong>@Model.UserName</strong><br>
+                    <small class="text-muted">@Model.UserEmail</small>
+                </div>
+            </div>
+        </div>
+
+        @using (Html.BeginForm("SelectOrganization", "Auth", new { ReturnUrl = Model.ReturnUrl }, FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            @Html.HiddenFor(m => m.UserId)
+            @Html.HiddenFor(m => m.ReturnUrl)
+
+            <div class="mb-4">
+                <label class="form-label fw-bold mb-3">Escolha sua organização:</label>
+
+                @foreach (var org in Model.Organizations)
+                {
+                    <div class="option-card" data-org-id="@org.Id" onclick="selectOrg(this, '@org.Id')">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0 me-3">
+                                @if (!string.IsNullOrEmpty(org.Logo))
+                                {
+                                    <img src="@org.Logo" alt="@org.Name" style="width: 48px; height: 48px; object-fit: cover; border-radius: 8px;">
+                                }
+                                else
+                                {
+                                    <div style="width: 48px; height: 48px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-building" style="font-size: 24px; color: #6c757d;"></i>
+                                    </div>
+                                }
+                            </div>
+                            <div class="flex-grow-1">
+                                <strong>@org.Name</strong><br>
+                                <span class="badge badge-primary">@org.Role</span>
+                            </div>
+                            <div class="flex-shrink-0">
+                                <input type="radio" name="OrganizationId" value="@org.Id" class="form-check-input" required style="width: 20px; height: 20px;" />
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100" id="btnContinue" disabled>
+                <i class="bi bi-arrow-right-circle"></i> Continuar
+            </button>
+        }
+
+        <div class="auth-footer">
+            <a href="@Url.Action("Login", "Auth")">
+                <i class="bi bi-arrow-left"></i> Voltar ao login
+            </a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function selectOrg(element, orgId) {
+        $('.option-card').removeClass('selected');
+        $(element).addClass('selected');
+        $(element).find('input[type="radio"]').prop('checked', true);
+        $('#btnContinue').prop('disabled', false);
+    }
+</script>
+}

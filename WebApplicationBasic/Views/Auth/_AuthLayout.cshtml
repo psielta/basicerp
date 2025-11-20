@@ -1,0 +1,284 @@
+﻿@{
+    var title = ViewBag.Title ?? "BasicERP";
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@title - BasicERP</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            --primary-color: #212529;
+            --primary-dark: #1a1d20;
+            --accent-color: #0d6efd;
+            --accent-hover: #0b5ed7;
+            --text-muted: #6c757d;
+            --border-color: #dee2e6;
+            --background: #f8f9fa;
+        }
+
+        body {
+            background: var(--background);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .auth-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            max-width: 450px;
+            width: 100%;
+            margin: 20px;
+        }
+
+        .auth-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .auth-header .logo {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .auth-header .logo i {
+            font-size: 32px;
+            color: var(--primary-color);
+        }
+
+        .auth-header h2 {
+            margin: 0 0 8px 0;
+            font-weight: 600;
+            font-size: 24px;
+        }
+
+        .auth-header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .auth-body {
+            padding: 40px 30px;
+        }
+
+        .form-floating label {
+            color: var(--text-muted);
+        }
+
+        .form-control {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+        }
+
+        .btn-outline-primary {
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            background: white;
+            padding: 12px 24px;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--accent-color);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .alert {
+            border-radius: 8px;
+            border: none;
+            padding: 12px 16px;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid var(--accent-color);
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #004085;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 24px 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .divider span {
+            padding: 0 16px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .auth-footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .auth-footer a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .user-info-box {
+            background: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .user-info-box .user-avatar {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            margin-right: 12px;
+        }
+
+        .option-card {
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .option-card:hover {
+            border-color: var(--accent-color);
+            background: #f8f9ff;
+            transform: translateX(4px);
+        }
+
+        .option-card.selected {
+            border-color: var(--accent-color);
+            background: #e7f3ff;
+        }
+
+        .option-card .icon {
+            font-size: 36px;
+            color: var(--accent-color);
+            margin-bottom: 12px;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .otp-input {
+            text-align: center;
+            font-size: 32px;
+            letter-spacing: 8px;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Loading spinner */
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+            border-width: 0.2em;
+        }
+    </style>
+    @RenderSection("Styles", required: false)
+</head>
+<body>
+    @RenderBody()
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@3.2.12/dist/jquery.validate.unobtrusive.min.js"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

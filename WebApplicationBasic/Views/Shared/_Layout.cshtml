@@ -272,10 +272,57 @@
             <div class="d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">@ViewBag.Title</h4>
                 <div>
-                    <span class="text-muted">
-                        <i class="bi bi-person-circle"></i>
-                        Welcome, User
-                    </span>
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <div class="dropdown">
+                            <button class="btn btn-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle"></i>
+                                @ViewBag.CurrentUserName
+                                @if (!string.IsNullOrEmpty(ViewBag.CurrentOrganizationName))
+                                {
+                                    <span class="badge bg-primary ms-2">@ViewBag.CurrentOrganizationName</span>
+                                }
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li>
+                                    <h6 class="dropdown-header">
+                                        @ViewBag.CurrentUserEmail
+                                    </h6>
+                                </li>
+                                @if (!string.IsNullOrEmpty(ViewBag.CurrentOrganizationRole))
+                                {
+                                    <li>
+                                        <span class="dropdown-item-text">
+                                            <small class="text-muted">Role: @ViewBag.CurrentOrganizationRole</small>
+                                        </span>
+                                    </li>
+                                }
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="#">
+                                        <i class="bi bi-person"></i> Minha Conta
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="@Url.Action("SwitchOrganization", "Auth")">
+                                        <i class="bi bi-building"></i> Trocar Organização
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item text-danger" href="@Url.Action("Logout", "Auth")">
+                                        <i class="bi bi-box-arrow-right"></i> Sair
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+                    else
+                    {
+                        <a href="@Url.Action("Login", "Auth")" class="btn btn-primary">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    }
                 </div>
             </div>
         </nav>

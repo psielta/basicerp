@@ -1,0 +1,71 @@
+﻿@{
+    ViewBag.Title = "Método de Login";
+    Layout = "~/Views/Auth/_AuthLayout.cshtml";
+}
+
+<div class="auth-container">
+    <div class="auth-header">
+        <div class="logo">
+            <i class="bi bi-shield-lock"></i>
+        </div>
+        <h2>Método de Login</h2>
+        <p>Escolha como deseja autenticar</p>
+    </div>
+
+    <div class="auth-body">
+        <div class="user-info-box">
+            <div class="mb-2">
+                <i class="bi bi-person-circle"></i> <strong>@ViewBag.UserEmail</strong>
+            </div>
+            <div>
+                <i class="bi bi-building"></i> <strong>@ViewBag.OrganizationName</strong>
+            </div>
+        </div>
+
+        <h6 class="mb-3 fw-bold">Como deseja fazer login?</h6>
+
+        @if (ViewBag.HasPassword == true)
+        {
+            <form action="@Url.Action("LoginWithPassword", "Auth")" method="get" class="mb-3">
+                <input type="hidden" name="userId" value="@ViewBag.UserId" />
+                <input type="hidden" name="organizationId" value="@ViewBag.OrganizationId" />
+                <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+
+                <div class="option-card">
+                    <div class="text-center mb-3">
+                        <i class="bi bi-key-fill icon"></i>
+                    </div>
+                    <h6>Login com Senha</h6>
+                    <p class="text-muted small mb-3">Use sua senha para acessar o sistema</p>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-key"></i> Usar Senha
+                    </button>
+                </div>
+            </form>
+        }
+
+        @using (Html.BeginForm("SendOTP", "Auth", new { ReturnUrl = ViewBag.ReturnUrl }, FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="userId" value="@ViewBag.UserId" />
+            <input type="hidden" name="organizationId" value="@ViewBag.OrganizationId" />
+
+            <div class="option-card">
+                <div class="text-center mb-3">
+                    <i class="bi bi-envelope-at-fill icon"></i>
+                </div>
+                <h6>Login por Código (OTP)</h6>
+                <p class="text-muted small mb-3">Receba um código de verificação no seu email</p>
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-send"></i> Enviar Código
+                </button>
+            </div>
+        }
+
+        <div class="auth-footer">
+            <a href="@Url.Action("SelectOrganization", "Auth", new { userId = ViewBag.UserId, returnUrl = ViewBag.ReturnUrl })">
+                <i class="bi bi-arrow-left"></i> Trocar organização
+            </a>
+        </div>
+    </div>
+</div>

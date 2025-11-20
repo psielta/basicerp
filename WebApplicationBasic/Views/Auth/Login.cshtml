@@ -1,0 +1,67 @@
+﻿@model WebApplicationBasic.Models.ViewModels.LoginViewModel
+
+@{
+    ViewBag.Title = "Login";
+    Layout = "~/Views/Auth/_AuthLayout.cshtml";
+}
+
+<div class="auth-container">
+    <div class="auth-header">
+        <div class="logo">
+            <i class="bi bi-box-seam"></i>
+        </div>
+        <h2>BasicERP</h2>
+        <p>Sistema de Gestão Empresarial</p>
+    </div>
+
+    <div class="auth-body">
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="alert alert-danger">
+                    @Html.ValidationSummary(false, "", new { @class = "mb-0" })
+                </div>
+            }
+
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success">
+                    @TempData["Success"]
+                </div>
+            }
+
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger">
+                    @TempData["Error"]
+                </div>
+            }
+
+        @using (Html.BeginForm("Login", "Auth", new { ReturnUrl = ViewBag.ReturnUrl }, FormMethod.Post, new { @class = "needs-validation" }))
+        {
+            @Html.AntiForgeryToken()
+
+            <div class="mb-3">
+                <label for="Email" class="form-label">Email</label>
+                @Html.TextBoxFor(m => m.Email, new { @class = "form-control", placeholder = "seu@email.com", required = "required", autofocus = "autofocus" })
+                @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger small mt-1" })
+            </div>
+
+            <div class="mb-4">
+                <div class="form-check">
+                    @Html.CheckBoxFor(m => m.RememberMe, new { @class = "form-check-input" })
+                    @Html.LabelFor(m => m.RememberMe, new { @class = "form-check-label" })
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-arrow-right-circle"></i> Continuar
+            </button>
+        }
+
+        <div class="auth-footer">
+            <small class="text-muted">
+                <i class="bi bi-shield-check"></i> Conexão segura e criptografada
+            </small>
+        </div>
+    </div>
+</div>

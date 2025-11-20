@@ -1,0 +1,125 @@
+﻿@model WebApplicationBasic.Models.ViewModels.VerifyOtpViewModel
+
+@{
+    ViewBag.Title = "Verificar Código";
+    Layout = "~/Views/Auth/_AuthLayout.cshtml";
+}
+
+<div class="auth-container">
+    <div class="auth-header">
+        <div class="logo">
+            <i class="bi bi-envelope-at-fill"></i>
+        </div>
+        <h2>Verificar Código</h2>
+        <p>Digite o código enviado por email</p>
+    </div>
+
+    <div class="auth-body">
+        <div class="user-info-box">
+            <div class="mb-2">
+                <i class="bi bi-person-circle"></i> <strong>@Model.UserEmail</strong>
+            </div>
+            <div>
+                <i class="bi bi-building"></i> <strong>@Model.OrganizationName</strong>
+            </div>
+        </div>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle"></i> @TempData["Success"]
+            </div>
+        }
+
+        <div class="info-box">
+            <i class="bi bi-info-circle"></i> Enviamos um código de 6 dígitos para seu email. Verifique sua caixa de entrada.
+        </div>
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="alert alert-danger">
+                @Html.ValidationSummary(false, "", new { @class = "mb-0" })
+            </div>
+        }
+
+        @using (Html.BeginForm("VerifyOTP", "Auth", new { ReturnUrl = Model.ReturnUrl }, FormMethod.Post, new { @class = "needs-validation" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.HiddenFor(m => m.UserId)
+            @Html.HiddenFor(m => m.OrganizationId)
+            @Html.HiddenFor(m => m.UserEmail)
+            @Html.HiddenFor(m => m.OrganizationName)
+            @Html.HiddenFor(m => m.ReturnUrl)
+
+            <div class="mb-4">
+                <label for="OtpCode" class="form-label">Código de Verificação</label>
+                @Html.TextBoxFor(m => m.OtpCode, new { @class = "form-control otp-input", placeholder = "000000", maxlength = "6", pattern = @"\d{6}", required = "required", autofocus = "autofocus", autocomplete = "off" })
+                @Html.ValidationMessageFor(m => m.OtpCode, "", new { @class = "text-danger small mt-1" })
+                <small class="text-muted">Digite os 6 dígitos recebidos por email</small>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-check-circle"></i> Verificar Código
+            </button>
+        }
+
+        <div class="divider">
+            <span>ou</span>
+        </div>
+
+        <form action="@Url.Action("SendOTP", "Auth")" method="post" id="resendForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="userId" value="@Model.UserId" />
+            <input type="hidden" name="organizationId" value="@Model.OrganizationId" />
+            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+
+            <button type="submit" class="btn btn-outline-primary w-100" id="resendBtn" disabled>
+                <i class="bi bi-arrow-clockwise"></i>
+                <span id="resendText">Reenviar código em <span class="countdown">60</span>s</span>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <a href="@Url.Action("SelectMethod", "Auth", new { userId = Model.UserId, organizationId = Model.OrganizationId, returnUrl = Model.ReturnUrl })">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    $(document).ready(function () {
+        // Countdown para reenvio
+        var seconds = 60;
+        var countdown = setInterval(function () {
+            seconds--;
+            $('.countdown').text(seconds);
+
+            if (seconds <= 0) {
+                clearInterval(countdown);
+                $('#resendBtn').prop('disabled', false);
+                $('#resendText').html('<i class="bi bi-arrow-clockwise"></i> Reenviar código');
+            }
+        }, 1000);
+
+        // Auto-submit ao digitar 6 dígitos
+        $('#OtpCode').on('input', function () {
+            var value = $(this).val();
+            if (value.length === 6 && /^\d{6}$/.test(value)) {
+                setTimeout(function () {
+                    $('form.needs-validation').submit();
+                }, 300);
+            }
+        });
+
+        // Permitir apenas números
+        $('#OtpCode').on('keypress', function (e) {
+            var charCode = e.which || e.keyCode;
+            if (charCode < 48 || charCode > 57) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>
+}

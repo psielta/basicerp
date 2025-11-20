@@ -20,23 +20,32 @@ Este projeto de portfolio demonstra uma base SaaS multi-tenant pronta para evolu
 - **ORM**: Entity Framework Core 3.1.32
 - **Banco**: PostgreSQL 15 + extensoes `uuid-ossp` e `citext`
 - **Provider**: Npgsql 4.1.9
+- **Autenticação**: OWIN Cookie Authentication + BCrypt.NET
+- **Email**: MailKit + MailHog (desenvolvimento)
 - **Containerizacao**: Docker & Docker Compose
-- **UI**: Bootstrap 5.2.3
+- **UI**: Bootstrap 5.3.3 + Bootstrap Icons
 
 ## Estrutura do Projeto
 
 ```
 BasicERP/
 ├── WebApplicationBasic/         # Projeto web ASP.NET MVC
-│   ├── Controllers/             # Controllers MVC
+│   ├── Controllers/             # Controllers MVC (Base, Auth, Home)
 │   ├── Views/                   # Views Razor
-│   ├── App_Start/               # Configuracoes (DI, Routes, etc.)
-│   └── Web.config               # Configuracoes do app
-├── EntityFrameworkProject/      # Projeto de dados
-│   ├── Models/                  # Entidades (organization, user, etc.)
-│   ├── Data/                    # DbContext e factory
-│   └── app.config               # Connection strings
-├── docker-compose.yml           # PostgreSQL + PgAdmin
+│   │   ├── Auth/               # Telas de autenticação
+│   │   └── Shared/             # Layout e parciais
+│   ├── Services/               # Serviços de autenticação, email, sessão
+│   ├── Filters/                # Atributos de autorização customizados
+│   ├── Models/ViewModels/      # ViewModels para formulários
+│   ├── Data/                   # SeedData para testes
+│   ├── App_Start/              # Configuracoes (DI, Routes, OWIN)
+│   └── Web.config              # Configuracoes do app
+├── EntityFrameworkProject/     # Projeto de dados
+│   ├── Models/                 # Entidades (organization, user, etc.)
+│   ├── Data/                   # DbContext e factory
+│   └── app.config              # Connection strings
+├── docker-compose.yml          # PostgreSQL + PgAdmin + MailHog + Redis + RabbitMQ
+├── AUTHENTICATION_TEST.md      # Instruções detalhadas de teste
 └── README.md
 ```
 
@@ -70,6 +79,12 @@ Servicos disponiveis:
 - **PgAdmin** na porta `5050`
   - Email: `admin@basicerp.com`
   - Senha: `admin`
+- **MailHog** na porta `8025` (Web UI) e `1025` (SMTP)
+  - Interface: http://localhost:8025
+- **Redis** na porta `6379`
+- **RabbitMQ** na porta `15672` (Management) e `5672` (AMQP)
+  - Interface: http://localhost:15672
+  - Usuario/Senha: guest/guest
 
 ### Passo 3: Restaurar Pacotes NuGet
 
@@ -100,6 +115,33 @@ Isso cria as tabelas:
 ### Passo 5: Executar o Projeto
 
 Pressione **F5** no Visual Studio ou clique em **Start**. A aplicacao roda em `https://localhost:44318/`.
+
+## Testando o Sistema de Autenticação
+
+### Usuários de Teste (Criados automaticamente)
+
+1. **Admin User**
+   - Email: `admin@example.com`
+   - Senha: `admin123`
+   - Organização: Empresa Exemplo (Owner)
+
+2. **João Silva**
+   - Email: `joao@example.com`
+   - Senha: `senha123`
+   - Organização: Empresa Exemplo (Member)
+
+3. **Maria Santos** (Múltiplas organizações)
+   - Email: `maria@example.com`
+   - Senha: `maria123`
+   - Organizações: Empresa Exemplo (Admin), Startup Tech (Owner)
+
+### Como Testar
+
+1. **Login com Senha**: Digite o email → Escolha a organização (se aplicável) → Escolha "Login com Senha" → Digite a senha
+
+2. **Login com OTP**: Digite o email → Escolha a organização → Escolha "Login por Código (OTP)" → Verifique o email no MailHog (http://localhost:8025) → Digite o código de 6 dígitos
+
+Para instruções mais detalhadas, consulte o arquivo [AUTHENTICATION_TEST.md](AUTHENTICATION_TEST.md).
 
 ## Modelo de Dados
 
@@ -177,17 +219,22 @@ SELECT * FROM session;
 
 ### Concluido
 - [x] Configuracao EF Core + PostgreSQL
-- [x] Docker Compose com PostgreSQL e PgAdmin
+- [x] Docker Compose com PostgreSQL, PgAdmin, MailHog, Redis e RabbitMQ
 - [x] Modelo de dados multi-tenant (organization, user, memberships, account, session)
-- [x] Injecao de dependencia do DbContext
+- [x] Injecao de dependencia do DbContext e Serviços
 - [x] Interface basica exibindo contagens do banco
+- [x] **Sistema de Autenticacao Completo**
+  - [x] Login com email e senha
+  - [x] Login com OTP (One-Time Password) via email
+  - [x] Suporte a múltiplas organizações
+  - [x] Hash de senhas com BCrypt (work factor 12)
+  - [x] Sessões gerenciadas no banco de dados
+  - [x] Cookies de autenticação OWIN criptografados
+  - [x] Proteção de rotas com atributos customizados
+  - [x] BaseController com contexto do usuário
+  - [x] Seed data para testes
 
 ### Em Desenvolvimento
-
-- [ ] **Sistema de Autenticacao**
-  - Login com cookies/session
-  - Hash de senhas e 2FA
-  - Protecao de rotas com `[Authorize]`
 
 - [ ] **Gestao de Usuarios**
   - CRUD completo de usuarios

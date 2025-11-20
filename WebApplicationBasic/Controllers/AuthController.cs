@@ -1,0 +1,352 @@
+using System;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using System.Web;
+using System.Web.Mvc;
+using EntityFrameworkProject.Data;
+using Microsoft.EntityFrameworkCore;
+using WebApplicationBasic.Models.ViewModels;
+using WebApplicationBasic.Services;
+
+namespace WebApplicationBasic.Controllers
+{
+    public class AuthController : Controller
+    {
+        private readonly IAuthenticationService _authService;
+        private readonly ISessionService _sessionService;
+        private readonly ApplicationDbContext _context;
+
+        public AuthController()
+        {
+            // Obter serviços do container DI
+            _authService = DependencyResolver.Current.GetService<IAuthenticationService>();
+            _sessionService = DependencyResolver.Current.GetService<ISessionService>();
+            _context = DependencyResolver.Current.GetService<ApplicationDbContext>();
+        }
+
+        // GET: /Auth/Login
+        [HttpGet]
+        public ActionResult Login(string returnUrl)
+        {
+            if (User.Identity.IsAuthenticated)
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
+            ViewBag.ReturnUrl = returnUrl;
+            return View(new LoginViewModel { ReturnUrl = returnUrl });
+        }
+
+        // POST: /Auth/Login
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> Login(LoginViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            // Validar usuário pelo email
+            var user = await _authService.ValidateUserByEmailAsync(model.Email);
+
+            if (user == null)
+            {
+                ModelState.AddModelError("", "Email não encontrado.");
+                return View(model);
+            }
+
+            // Verificar se o usuário tem organizações
+            var organizations = await _authService.GetUserOrganizationsAsync(user.Id);
+
+            if (!organizations.Any())
+            {
+                ModelState.AddModelError("", "Usuário não está vinculado a nenhuma organização.");
+                return View(model);
+            }
+
+            // Se tem apenas uma organização, pular seleção
+            if (organizations.Count == 1)
+            {
+                var org = organizations.First();
+                return RedirectToAction("SelectMethod", new
+                {
+                    userId = user.Id,
+                    organizationId = org.Id,
+                    returnUrl = model.ReturnUrl
+                });
+            }
+
+            // Múltiplas organizações - redirecionar para seleção
+            return RedirectToAction("SelectOrganization", new { userId = user.Id, returnUrl = model.ReturnUrl });
+        }
+
+        // GET: /Auth/SelectOrganization
+        [HttpGet]
+        public async Task<ActionResult> SelectOrganization(Guid userId, string returnUrl)
+        {
+            var user = await _context.Users
+                .Include(u => u.Memberships)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+            {
+                return RedirectToAction("Login");
+            }
+
+            var organizations = await _authService.GetUserOrganizationsAsync(userId);
+
+            var model = new SelectOrganizationViewModel
+            {
+                UserId = userId,
+                UserName = user.Name,
+                UserEmail = user.Email,
+                Organizations = organizations.Select(o =>
+                {
+                    var membership = user.Memberships?.FirstOrDefault(m => m.OrganizationId == o.Id);
+                    return new SelectOrganizationViewModel.OrganizationInfo
+                    {
+                        Id = o.Id,
+                        Name = o.Name,
+                        Role = membership?.Role ?? "member",
+                        Logo = o.Logo
+                    };
+                }).ToList(),
+                ReturnUrl = returnUrl,
+                HasPassword = _context.Accounts.Any(a => a.UserId == userId && a.ProviderId == "local" && !string.IsNullOrEmpty(a.Password))
+            };
+
+            return View(model);
+        }
+
+        // POST: /Auth/SelectOrganization
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult SelectOrganization(SelectOrganizationViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            return RedirectToAction("SelectMethod", new
+            {
+                userId = model.UserId,
+                organizationId = model.OrganizationId,
+                returnUrl = model.ReturnUrl
+            });
+        }
+
+        // GET: /Auth/SelectMethod
+        [HttpGet]
+        public async Task<ActionResult> SelectMethod(Guid userId, Guid organizationId, string returnUrl)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            var organization = await _context.Organizations.FindAsync(organizationId);
+
+            if (user == null || organization == null)
+            {
+                return RedirectToAction("Login");
+            }
+
+            // Verificar se tem senha
+            var hasPassword = _context.Accounts.Any(a => a.UserId == userId && a.ProviderId == "local" && !string.IsNullOrEmpty(a.Password));
+
+            ViewBag.UserId = userId;
+            ViewBag.OrganizationId = organizationId;
+            ViewBag.UserEmail = user.Email;
+            ViewBag.OrganizationName = organization.Name;
+            ViewBag.HasPassword = hasPassword;
+            ViewBag.ReturnUrl = returnUrl;
+
+            return View();
+        }
+
+        // POST: /Auth/LoginWithPassword
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> LoginWithPassword(PasswordLoginViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            // Validar senha
+            var isValid = await _authService.ValidatePasswordAsync(model.UserId, model.Password);
+
+            if (!isValid)
+            {
+                ModelState.AddModelError("", "Senha incorreta.");
+                return View(model);
+            }
+
+            // Login bem-sucedido
+            await CompleteLogin(model.UserId, model.OrganizationId, model.ReturnUrl);
+
+            return RedirectToLocal(model.ReturnUrl);
+        }
+
+        // GET: /Auth/LoginWithPassword
+        [HttpGet]
+        public async Task<ActionResult> LoginWithPassword(Guid userId, Guid organizationId, string returnUrl)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            var organization = await _context.Organizations.FindAsync(organizationId);
+
+            if (user == null || organization == null)
+            {
+                return RedirectToAction("Login");
+            }
+
+            var model = new PasswordLoginViewModel
+            {
+                UserId = userId,
+                OrganizationId = organizationId,
+                UserEmail = user.Email,
+                OrganizationName = organization.Name,
+                ReturnUrl = returnUrl
+            };
+
+            return View(model);
+        }
+
+        // POST: /Auth/SendOTP
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SendOTP(Guid userId, Guid organizationId, string returnUrl)
+        {
+            try
+            {
+                await _authService.GenerateAndSendOtpAsync(userId);
+                TempData["Success"] = "Código enviado para seu email!";
+
+                return RedirectToAction("VerifyOTP", new { userId, organizationId, returnUrl });
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = "Erro ao enviar código. Tente novamente.";
+                return RedirectToAction("SelectMethod", new { userId, organizationId, returnUrl });
+            }
+        }
+
+        // GET: /Auth/VerifyOTP
+        [HttpGet]
+        public async Task<ActionResult> VerifyOTP(Guid userId, Guid organizationId, string returnUrl)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            var organization = await _context.Organizations.FindAsync(organizationId);
+
+            if (user == null || organization == null)
+            {
+                return RedirectToAction("Login");
+            }
+
+            var model = new VerifyOtpViewModel
+            {
+                UserId = userId,
+                OrganizationId = organizationId,
+                UserEmail = user.Email,
+                OrganizationName = organization.Name,
+                ReturnUrl = returnUrl,
+                CanResend = true,
+                ResendInSeconds = 60
+            };
+
+            return View(model);
+        }
+
+        // POST: /Auth/VerifyOTP
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> VerifyOTP(VerifyOtpViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            // Debug: Ver o que está sendo enviado
+            System.Diagnostics.Debug.WriteLine($"OTP recebido: '{model.OtpCode}' (Length: {model.OtpCode?.Length})");
+
+            // Validar OTP
+            var isValid = await _authService.ValidateOtpAsync(model.UserId, model.OtpCode);
+
+            if (!isValid)
+            {
+                ModelState.AddModelError("", "Código inválido ou expirado.");
+
+                var user = await _context.Users.FindAsync(model.UserId);
+                var organization = await _context.Organizations.FindAsync(model.OrganizationId);
+
+                model.UserEmail = user?.Email;
+                model.OrganizationName = organization?.Name;
+
+                return View(model);
+            }
+
+            // Login bem-sucedido
+            await CompleteLogin(model.UserId, model.OrganizationId, model.ReturnUrl);
+
+            return RedirectToLocal(model.ReturnUrl);
+        }
+
+        // GET: /Auth/Logout
+        public ActionResult Logout()
+        {
+            _authService.SignOut(HttpContext);
+            return RedirectToAction("Login");
+        }
+
+        // GET: /Auth/SwitchOrganization
+        public ActionResult SwitchOrganization()
+        {
+            // Obter userId do usuário autenticado
+            var claimsPrincipal = User as ClaimsPrincipal;
+            var userIdClaim = claimsPrincipal?.Claims?.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return RedirectToAction("Login");
+            }
+
+            // Fazer logout mantendo o userId
+            _authService.SignOut(HttpContext);
+
+            // Redirecionar para seleção de organização
+            return RedirectToAction("SelectOrganization", new { userId = userId });
+        }
+
+        private async Task CompleteLogin(Guid userId, Guid organizationId, string returnUrl)
+        {
+            var user = await _context.Users
+                .Include(u => u.Memberships)
+                    .ThenInclude(m => m.Organization)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+            {
+                throw new InvalidOperationException("Usuário não encontrado");
+            }
+
+            // Criar identidade
+            var identity = await _authService.CreateIdentityAsync(user, organizationId);
+
+            // Criar sessão no banco
+            var session = _sessionService.CreateSession(userId, organizationId, Request);
+
+            // Fazer sign in
+            _authService.SignIn(HttpContext, identity, session);
+        }
+
+        private ActionResult RedirectToLocal(string returnUrl)
+        {
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+            return RedirectToAction("Index", "Home");
+        }
+    }
+}

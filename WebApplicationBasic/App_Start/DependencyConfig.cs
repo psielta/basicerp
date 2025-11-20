@@ -5,6 +5,7 @@ using System;
 using System.Configuration;
 using System.Web.Mvc;
 using System.Web.Routing;
+using WebApplicationBasic.Services;
 
 namespace WebApplicationBasic.App_Start
 {
@@ -19,14 +20,23 @@ namespace WebApplicationBasic.App_Start
             var connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"]?.ConnectionString
                 ?? "Host=localhost;Port=5432;Database=basic_db;Username=adm;Password=156879";
 
-            services.AddScoped<ApplicationDbContext>(provider =>
+            // Registrar DbContext como transient para evitar problemas de disposed
+            services.AddTransient<ApplicationDbContext>(provider =>
             {
                 var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
                 optionsBuilder.UseNpgsql(connectionString);
                 return new ApplicationDbContext(optionsBuilder.Options);
             });
 
+            // Registrar serviços de autenticação como transient
+            services.AddTransient<IPasswordHasher, PasswordHasher>();
+            services.AddTransient<IEmailService, EmailService>();
+            services.AddTransient<ISessionService, SessionService>();
+            services.AddTransient<IAuthenticationService, AuthenticationService>();
+
+            // Registrar controllers
             services.AddTransient<WebApplicationBasic.Controllers.HomeController>();
+            services.AddTransient<WebApplicationBasic.Controllers.AuthController>();
 
             _serviceProvider = services.BuildServiceProvider();
 

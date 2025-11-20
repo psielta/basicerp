@@ -4,27 +4,34 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using WebApplicationBasic.Filters;
 
 namespace WebApplicationBasic.Controllers
 {
-    public class HomeController : Controller
+    [CustomAuthorize]
+    public class HomeController : BaseController
     {
-        private readonly ApplicationDbContext _context;
-
-        public HomeController(ApplicationDbContext context)
+        public HomeController()
         {
-            _context = context;
         }
 
         public ActionResult Index()
         {
-            var totalOrganizations = _context.Organizations.Count();
-            var totalUsers = _context.Users.Count();
-            var totalMemberships = _context.Memberships.Count();
+            var totalOrganizations = Context.Organizations.Count();
+            var totalUsers = Context.Users.Count();
+            var totalMemberships = Context.Memberships.Count();
 
             ViewBag.TotalOrganizations = totalOrganizations;
             ViewBag.TotalUsers = totalUsers;
             ViewBag.TotalMemberships = totalMemberships;
+
+            // Informações adicionais do usuário logado
+            if (User.Identity.IsAuthenticated)
+            {
+                ViewBag.UserOrganizations = Context.Memberships
+                    .Where(m => m.UserId == CurrentUserId)
+                    .Count();
+            }
 
             return View();
         }
