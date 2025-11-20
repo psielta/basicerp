@@ -17,12 +17,13 @@ namespace EntityFrameworkProject
                     context.Database.EnsureCreated();
                     Console.WriteLine("Banco de dados criado/atualizado com sucesso!");
 
-                    Console.WriteLine("\nTabelas criadas:");
-                    Console.WriteLine("- tenants");
-                    Console.WriteLine("- usuarios");
-                    Console.WriteLine("\nDados iniciais inseridos:");
-                    Console.WriteLine("- 1 Tenant Padrão");
-                    Console.WriteLine("- 1 Usuário Administrador");
+                    Console.WriteLine("\nEstrutura principal:");
+                    Console.WriteLine("- organization (tenants)");
+                    Console.WriteLine("- user (usuarios globais)");
+                    Console.WriteLine("- memberships (papel do usuario dentro da organization)");
+                    Console.WriteLine("- account (credenciais/oauth)");
+                    Console.WriteLine("- session (controle de sessao)");
+                    Console.WriteLine("\nExecute suas migrations ou o script SQL para popular os dados.");
                 }
             }
             catch (Exception ex)

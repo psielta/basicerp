@@ -18,13 +18,13 @@ namespace WebApplicationBasic.Controllers
 
         public ActionResult Index()
         {
-            var totalTenants = _context.Tenants.Count();
-            var totalUsuarios = _context.Usuarios.Count();
-            var totalClientes = _context.Clientes.Count();
+            var totalOrganizations = _context.Organizations.Count();
+            var totalUsers = _context.Users.Count();
+            var totalMemberships = _context.Memberships.Count();
 
-            ViewBag.TotalTenants = totalTenants;
-            ViewBag.TotalUsuarios = totalUsuarios;
-            ViewBag.TotalClientes = totalClientes;
+            ViewBag.TotalOrganizations = totalOrganizations;
+            ViewBag.TotalUsers = totalUsers;
+            ViewBag.TotalMemberships = totalMemberships;
 
             return View();
         }

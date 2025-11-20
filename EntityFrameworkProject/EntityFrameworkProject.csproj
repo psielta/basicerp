@@ -142,18 +142,16 @@
     <Compile Include="Data\ApplicationDbContext.cs" />
     <Compile Include="Data\ApplicationDbContextFactory.cs" />
     <Compile Include="MigrationRunner.cs" />
-    <Compile Include="Migrations\20251120031448_InitialCreate.cs" />
-    <Compile Include="Migrations\20251120031448_InitialCreate.Designer.cs">
-      <DependentUpon>20251120031448_InitialCreate.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\20251120033428_AddClientes.cs" />
-    <Compile Include="Migrations\20251120033428_AddClientes.Designer.cs">
-      <DependentUpon>20251120033428_AddClientes.cs</DependentUpon>
+    <Compile Include="Migrations\20251120141928_InitialSaaS.cs" />
+    <Compile Include="Migrations\20251120141928_InitialSaaS.Designer.cs">
+      <DependentUpon>20251120141928_InitialSaaS.cs</DependentUpon>
     </Compile>
     <Compile Include="Migrations\ApplicationDbContextModelSnapshot.cs" />
-    <Compile Include="Models\Cliente.cs" />
-    <Compile Include="Models\Tenant.cs" />
-    <Compile Include="Models\Usuario.cs" />
+    <Compile Include="Models\Account.cs" />
+    <Compile Include="Models\Membership.cs" />
+    <Compile Include="Models\Organization.cs" />
+    <Compile Include="Models\Session.cs" />
+    <Compile Include="Models\User.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

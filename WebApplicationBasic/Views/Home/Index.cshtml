@@ -1,10 +1,10 @@
-﻿@{
+@{
     ViewBag.Title = "Home Page";
 }
 
 <main>
     <section class="row mb-4" aria-labelledby="aspnetTitle">
-        <h1 id="title">Basic - Sistema de Gestão</h1>
+        <h1 id="title">Basic - Sistema de Gestao</h1>
         <p class="lead">Sistema multi-tenant com Entity Framework Core e PostgreSQL</p>
     </section>
 
@@ -15,16 +15,16 @@
                 <hr>
                 <div class="row text-center">
                     <div class="col-md-4">
-                        <h2 class="display-4">@ViewBag.TotalTenants</h2>
-                        <p class="text-muted">Tenants cadastrados</p>
+                        <h2 class="display-4">@ViewBag.TotalOrganizations</h2>
+                        <p class="text-muted">Organizations (tenants)</p>
                     </div>
                     <div class="col-md-4">
-                        <h2 class="display-4">@ViewBag.TotalUsuarios</h2>
-                        <p class="text-muted">Usuários cadastrados</p>
+                        <h2 class="display-4">@ViewBag.TotalUsers</h2>
+                        <p class="text-muted">Usuarios globais</p>
                     </div>
                     <div class="col-md-4">
-                        <h2 class="display-4">@ViewBag.TotalClientes</h2>
-                        <p class="text-muted">Clientes cadastrados</p>
+                        <h2 class="display-4">@ViewBag.TotalMemberships</h2>
+                        <p class="text-muted">Memberships ativos</p>
                     </div>
                 </div>
             </div>
@@ -37,26 +37,28 @@
             <p>PostgreSQL rodando no Docker na porta 5432</p>
             <ul>
                 <li><strong>Database:</strong> basic_db</li>
-                <li><strong>Usuário:</strong> adm</li>
-                <li><strong>Tabelas:</strong> tenants, usuarios, clientes</li>
+                <li><strong>Usuario:</strong> adm</li>
+                <li><strong>Tabelas:</strong> organization, "user", memberships, account, session</li>
             </ul>
         </section>
         <section class="col-md-4" aria-labelledby="efTitle">
             <h2 id="efTitle">Entity Framework</h2>
             <p>EF Core 3.1.32 configurado com Npgsql provider</p>
             <ul>
-                <li>Migrations aplicadas com sucesso</li>
-                <li>Injeção de dependência configurada</li>
-                <li>DbContext disponível nos controllers</li>
+                <li>Migrations prontas para criar extensoes uuid-ossp e citext</li>
+                <li>Injecao de dependencia configurada</li>
+                <li>DbContext disponivel nos controllers</li>
             </ul>
         </section>
         <section class="col-md-4" aria-labelledby="modelsTitle">
             <h2 id="modelsTitle">Modelos</h2>
-            <p>Estrutura multi-tenant implementada</p>
+            <p>Estrutura multi-tenant pronta para SaaS</p>
             <ul>
-                <li><strong>Tenant:</strong> Empresas/Organizações</li>
-                <li><strong>Usuario:</strong> Usuários do sistema</li>
-                <li><strong>Cliente:</strong> Clientes dos tenants</li>
+                <li><strong>Organization:</strong> representa o tenant</li>
+                <li><strong>User:</strong> usuario global com role</li>
+                <li><strong>Membership:</strong> vinculo usuario x organization</li>
+                <li><strong>Account:</strong> credenciais/OAuth</li>
+                <li><strong>Session:</strong> sessoes com IP e user agent</li>
             </ul>
         </section>
     </div>

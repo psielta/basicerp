@@ -1,55 +1,55 @@
 # Basic ERP - Sistema Multi-Tenant
 
-Sistema ERP básico multi-tenant desenvolvido com ASP.NET MVC 5 e Entity Framework Core 3.1, utilizando PostgreSQL como banco de dados.
+Sistema ERP basico multi-tenant desenvolvido com ASP.NET MVC 5 e Entity Framework Core 3.1 utilizando PostgreSQL como banco de dados.
 
-## 📋 Sobre o Projeto
+## Sobre o Projeto
 
-Este é um projeto de portfólio que demonstra a implementação de um sistema ERP básico com arquitetura multi-tenant, permitindo que múltiplas empresas (tenants) utilizem o mesmo sistema com isolamento de dados.
+Este projeto de portfolio demonstra uma base SaaS multi-tenant pronta para evoluir, com modelagem profissional para organizations (tenants), usuarios globais, memberships, contas de autenticacao e sessoes.
 
 ### Funcionalidades Principais
 
-- Arquitetura multi-tenant
-- Gerenciamento de tenants (empresas)
-- Sistema de usuários por tenant
-- Cadastro de clientes
-- Controle de vendas
+- Arquitetura multi-tenant baseada em organizations/memberships
+- Usuarios globais com roles, metadata em JSONB e suporte a 2FA
+- Contas OAuth/credenciais, tokens e sessoes com IP/user-agent
+- Docker Compose com PostgreSQL e PgAdmin
+- Base pronta para modulos de clientes, produtos e vendas
 
-## 🚀 Tecnologias Utilizadas
+## Tecnologias Utilizadas
 
 - **Backend**: ASP.NET MVC 5 (.NET Framework 4.7.2)
 - **ORM**: Entity Framework Core 3.1.32
-- **Banco de Dados**: PostgreSQL 15
+- **Banco**: PostgreSQL 15 + extensoes `uuid-ossp` e `citext`
 - **Provider**: Npgsql 4.1.9
-- **Containerização**: Docker & Docker Compose
+- **Containerizacao**: Docker & Docker Compose
 - **UI**: Bootstrap 5.2.3
 
-## 📁 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```
 BasicERP/
-├── WebApplicationBasic/          # Projeto web ASP.NET MVC
-│   ├── Controllers/              # Controllers MVC
-│   ├── Views/                    # Views Razor
-│   ├── App_Start/                # Configurações (DI, Routes, etc)
-│   └── Web.config                # Configurações do app web
-├── EntityFrameworkProject/       # Projeto de dados
-│   ├── Models/                   # Entidades do banco
-│   ├── Data/                     # DbContext e configurações
-│   ├── Migrations/               # Migrations do EF Core
-│   └── app.config                # Configurações do projeto de dados
-└── docker-compose.yml            # Configuração do PostgreSQL
+├── WebApplicationBasic/         # Projeto web ASP.NET MVC
+│   ├── Controllers/             # Controllers MVC
+│   ├── Views/                   # Views Razor
+│   ├── App_Start/               # Configuracoes (DI, Routes, etc.)
+│   └── Web.config               # Configuracoes do app
+├── EntityFrameworkProject/      # Projeto de dados
+│   ├── Models/                  # Entidades (organization, user, etc.)
+│   ├── Data/                    # DbContext e factory
+│   └── app.config               # Connection strings
+├── docker-compose.yml           # PostgreSQL + PgAdmin
+└── README.md
 ```
 
-## 🛠️ Configuração do Ambiente
+## Configuracao do Ambiente
 
-### Pré-requisitos
+### Pre-requisitos
 
 - Visual Studio 2019 ou superior
 - .NET Framework 4.7.2
 - Docker Desktop
 - Git
 
-### Passo 1: Clonar o Repositório
+### Passo 1: Clonar o Repositorio
 
 ```bash
 git clone https://github.com/psielta/basicerp.git
@@ -62,10 +62,10 @@ cd basicerp
 docker-compose up -d
 ```
 
-Isso irá iniciar:
+Servicos disponiveis:
 - **PostgreSQL** na porta `5432`
   - Database: `basic_db`
-  - Usuário: `adm`
+  - Usuario: `adm`
   - Senha: `156879`
 - **PgAdmin** na porta `5050`
   - Email: `admin@basicerp.com`
@@ -73,97 +73,84 @@ Isso irá iniciar:
 
 ### Passo 3: Restaurar Pacotes NuGet
 
-Abra a solução `WebApplicationBasic.sln` no Visual Studio e restaure os pacotes:
+No Visual Studio abra `WebApplicationBasic.sln` e execute:
 
 ```
 Tools > NuGet Package Manager > Package Manager Console
-```
-
-Execute:
-
-```powershell
-Update-Package -reinstall
+Update-Package -Reinstall
 ```
 
 ### Passo 4: Executar Migrations
 
-No **Package Manager Console**, certifique-se de que:
+No **Package Manager Console**:
 - **Default project**: `EntityFrameworkProject`
-- **Startup project**: `WebApplicationBasic` (em negrito no Solution Explorer)
-
-Execute:
+- **Startup project**: `WebApplicationBasic`
 
 ```powershell
 Update-Database
 ```
 
-Isso criará as tabelas no banco de dados:
-- `tenants`
-- `usuarios`
-- `clientes`
+Isso cria as tabelas:
+- `organization`
+- `"user"`
+- `memberships`
+- `account`
+- `session`
 
 ### Passo 5: Executar o Projeto
 
-Pressione **F5** no Visual Studio ou clique em **Start**.
+Pressione **F5** no Visual Studio ou clique em **Start**. A aplicacao roda em `https://localhost:44318/`.
 
-A aplicação estará disponível em: `https://localhost:44318/`
+## Modelo de Dados
 
-## 🗄️ Modelo de Dados
+### Organization (tenant)
+- `id` UUID com `uuid_generate_v4()`
+- `name`, `slug` (citext unico), `logo`
+- `metadata` JSONB para dados dinamicos
+- `created_at` / `updated_at` com `now()`
 
-### Tenant
-Representa as empresas/organizações que utilizam o sistema.
+### User (global)
+- `id`, `name`, `email` (citext unico)
+- `email_verified`, `role` (default `user`), `image`
+- `metadata` JSONB, `two_factor_enabled`
+- `created_at`, `updated_at`
 
-- Id, Nome, CNPJ, Email, Telefone
-- Ativo, DataCriacao, DataAtualizacao
+### Membership
+- `organization_id`, `user_id`, `role`, `team_id`
+- `created_at`, `updated_at`
+- Constraints: FK cascata, indice unico `(organization_id, user_id)` e indices auxiliares por FK
 
-### Usuario
-Usuários do sistema vinculados a um tenant.
+### Account
+- `provider_id`, `account_id` (par unico)
+- `user_id` (FK), tokens de acesso/refresh/id + expiracoes
+- `scope`, `password` (para credenciais locais)
+- `created_at`, `updated_at`
 
-- Id, TenantId, Nome, Email, SenhaHash
-- Role, Ativo, DataCriacao, DataAtualizacao, UltimoLogin
+### Session
+- `token` unico, `expires_at`, `created_at`, `updated_at`
+- `ip_address` (inet) e `user_agent`
+- `user_id` (obrigatorio) e `active_organization_id` (nullable, `ON DELETE SET NULL`)
 
-### Cliente
-Clientes cadastrados por cada tenant.
-
-- Id, TenantId, Nome, CPF/CNPJ
-- Email, Telefone, Celular
-- Endereço completo (CEP, Endereco, Numero, Complemento, Bairro, Cidade, Estado)
-- Ativo, DataCriacao, DataAtualizacao
-
-## 🔧 Comandos Úteis
+## Comandos Uteis
 
 ### Docker
 
 ```bash
-# Subir containers
-docker-compose up -d
+docker-compose up -d      # Subir containers
+docker-compose down       # Parar containers
+docker-compose down -v    # Remover containers e volumes
 
-# Parar containers
-docker-compose down
-
-# Remover containers e volumes
-docker-compose down -v
-
-# Ver logs do PostgreSQL
+docker-compose down -v # Parar, remover containers E volumes
 docker logs basicerp-postgres
-
-# Conectar ao PostgreSQL via CLI
 docker exec -it basicerp-postgres psql -U adm -d basic_db
 ```
 
 ### Entity Framework Migrations
 
 ```powershell
-# Criar nova migration
 Add-Migration NomeDaMigration
-
-# Aplicar migrations pendentes
 Update-Database
-
-# Reverter última migration
-Update-Database -Migration NomeDaMigrationAnterior
-
-# Ver lista de migrations
+Update-Database -Migration NomeAnterior
 Get-Migration
 ```
 
@@ -173,97 +160,95 @@ Get-Migration
 -- Listar tabelas
 \dt
 
--- Ver estrutura de uma tabela
-\d tenants
+-- Ver estrutura
+\d organization
+\d "user"
+\d memberships
 
 -- Consultar dados
-SELECT * FROM tenants;
-SELECT * FROM usuarios;
-SELECT * FROM clientes;
+SELECT * FROM organization;
+SELECT * FROM "user";
+SELECT * FROM memberships;
+SELECT * FROM account;
+SELECT * FROM session;
 ```
 
-## 🗺️ Roadmap
+## Roadmap
 
-### ✅ Concluído
-- [x] Configuração do Entity Framework Core com PostgreSQL
+### Concluido
+- [x] Configuracao EF Core + PostgreSQL
 - [x] Docker Compose com PostgreSQL e PgAdmin
-- [x] Modelo de dados multi-tenant (Tenant, Usuario, Cliente)
-- [x] Migrations configuradas
-- [x] Injeção de dependência do DbContext
-- [x] Interface básica mostrando dados do banco
+- [x] Modelo de dados multi-tenant (organization, user, memberships, account, session)
+- [x] Injecao de dependencia do DbContext
+- [x] Interface basica exibindo contagens do banco
 
-### 🚧 Em Desenvolvimento
+### Em Desenvolvimento
 
-- [ ] **Sistema de Autenticação**
-  - Implementar login de usuários
-  - Autenticação baseada em cookies/session
-  - Hash de senhas com BCrypt
-  - Proteção de rotas com [Authorize]
+- [ ] **Sistema de Autenticacao**
+  - Login com cookies/session
+  - Hash de senhas e 2FA
+  - Protecao de rotas com `[Authorize]`
 
-- [ ] **Gestão de Usuários**
-  - CRUD completo de usuários
-  - Gerenciamento de roles/permissões
-  - Associação usuário-tenant
+- [ ] **Gestao de Usuarios**
+  - CRUD completo de usuarios
+  - Definicao de roles
+  - Associacao usuario-organization via memberships
 
-- [ ] **Cadastro de Clientes**
-  - CRUD completo de clientes
-  - Validação de CPF/CNPJ
-  - Busca e filtros
-  - Paginação
+- [ ] **Camada de Clientes**
+  - CRUD de clientes por organization
+  - Validacao de CPF/CNPJ
+  - Busca, filtros e paginacao
 
 - [ ] **Cadastro de Produtos**
   - CRUD de produtos
-  - Controle de estoque
-  - Categorias de produtos
-  - Preços e descontos
+  - Estoque e categorias
+  - Precos e descontos
 
 - [ ] **Sistema de Vendas**
-  - Criação de pedidos/vendas
-  - Itens de venda
-  - Cálculo de totais
-  - Histórico de vendas por cliente
-  - Relatórios básicos
+  - Pedidos/vendas e itens
+  - Calculo de totais
+  - Historico por cliente e relatórios basicos
 
-### 🔮 Futuro
+### Futuro
 
-- [ ] Dashboard com gráficos e métricas
-- [ ] Relatórios de vendas (PDF/Excel)
-- [ ] API REST para integração
-- [ ] Migração para .NET 8
-- [ ] Testes unitários e de integração
+- [ ] Dashboard com graficos
+- [ ] Relatorios (PDF/Excel)
+- [ ] API REST para integracao
+- [ ] Migracao para .NET 8
+- [ ] Testes unitarios/integrados
 - [ ] CI/CD com GitHub Actions
 
-## 📝 Notas Técnicas
+## Notas Tecnicas
 
-### Injeção de Dependência
+### Injecao de Dependencia
 
-O projeto utiliza `Microsoft.Extensions.DependencyInjection` para gerenciar dependências:
+`Microsoft.Extensions.DependencyInjection` gerencia as dependencias:
 
-- **DbContext**: Scoped (uma instância por requisição HTTP)
-- **Controllers**: Transient (criado quando necessário)
+- `ApplicationDbContext`: Scoped (uma instancia por requisicao)
+- Controllers: Transient
 
 ### Binding Redirects
 
-Devido ao uso de .NET Framework com EF Core, são necessários binding redirects no `Web.config` para resolver conflitos de versões de assemblies.
+Como o projeto usa .NET Framework + EF Core, os binding redirects definidos no `Web.config` evitam conflitos de versao.
 
 ### Multi-Tenancy
 
-Todos os modelos possuem uma foreign key `TenantId`, garantindo isolamento de dados entre diferentes tenants. Futuramente, será implementado um filtro global no DbContext para aplicar automaticamente o filtro do tenant logado.
+A separacao de dados acontece via `memberships`: cada usuario pode pertencer a varias organizations, e os relacionamentos trazem `organization_id`/`user_id` em todas as tabelas dependentes. Um filtro global de tenant podera ser adicionado futuramente no `DbContext`.
 
-## 🤝 Contribuindo
+## Contribuindo
 
-Este é um projeto de portfólio pessoal, mas sugestões e feedback são bem-vindos!
+Projeto de portfolio pessoal, mas feedbacks sao bem-vindos! Abra uma issue ou envie um PR.
 
-## 📄 Licença
+## Licenca
 
-Este projeto está sob a licença MIT.
+Projeto sob licenca MIT.
 
-## 👤 Autor
+## Autor
 
-Mateus A. S. Salgueiro
-- GitHub: [@psielta](https://github.com/psielta)
+Mateus Salgueiro  
+- GitHub: [@psielta](https://github.com/psielta)  
 - LinkedIn: [Mateus Salgueiro](https://www.linkedin.com/in/mateus-salgueiro-525717205/)
 
 ---
 
-Desenvolvido como parte do meu portfólio de desenvolvimento web com .NET
+Desenvolvido como parte do meu portfolio de desenvolvimento web com .NET.
