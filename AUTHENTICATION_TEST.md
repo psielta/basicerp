@@ -54,6 +54,25 @@ Acesse o MailHog em: http://localhost:8025
 7. Digite o código recebido
 8. Após validação, será autenticado
 
+### 3. Recuperação de Senha
+
+1. Na tela de login com senha, clique em "Esqueceu a senha?"
+2. Digite o email da conta
+3. Acesse o MailHog em http://localhost:8025 para ver o email
+4. Clique no link de redefinição no email
+5. Digite e confirme a nova senha
+6. Após redefinir, você será direcionado para o login
+
+### 4. Gerenciamento de Conta
+
+1. Após fazer login, clique no menu do usuário (canto superior direito)
+2. Selecione "Minha Conta"
+3. No perfil você pode:
+   - **Editar Perfil**: Alterar nome, email e foto
+   - **Alterar Senha**: Mudar senha (requer senha atual)
+   - **Segurança**: Ver e gerenciar sessões ativas
+   - **Organizações**: Ver todas as suas organizações e trocar entre elas
+
 ## Funcionalidades Implementadas
 
 ### Autenticação
@@ -61,7 +80,17 @@ Acesse o MailHog em: http://localhost:8025
 - ✅ Login com OTP (One-Time Password) via email
 - ✅ Suporte a múltiplas organizações
 - ✅ Seleção de organização durante login
+- ✅ **Recuperação de senha via email**
+- ✅ **Redefinição de senha com token seguro**
 - ✅ Logout
+
+### Gerenciamento de Conta ("Minha Conta")
+- ✅ **Visualização de perfil completo**
+- ✅ **Edição de perfil (nome, email, foto)**
+- ✅ **Alteração de senha com validação**
+- ✅ **Gerenciamento de sessões ativas**
+- ✅ **Visualização de organizações**
+- ✅ **Troca entre organizações**
 
 ### Segurança
 - ✅ Hashing de senhas com BCrypt (work factor 12)
@@ -70,6 +99,10 @@ Acesse o MailHog em: http://localhost:8025
 - ✅ CSRF protection nos formulários
 - ✅ OTP com expiração de 5 minutos
 - ✅ Sliding expiration nas sessões (24 horas)
+- ✅ **Tokens de reset únicos (24 horas)**
+- ✅ **Indicador de força de senha**
+- ✅ **Tracking de IP e User-Agent nas sessões**
+- ✅ **Revogação de sessões individuais ou em massa**
 
 ### Autorização
 - ✅ Atributo `[CustomAuthorize]` para proteger controllers
@@ -83,6 +116,11 @@ Acesse o MailHog em: http://localhost:8025
 - ✅ Exibição da organização atual
 - ✅ Opção para trocar de organização
 - ✅ Indicadores visuais de role do usuário
+- ✅ **Páginas de recuperação de senha**
+- ✅ **Dashboard de perfil do usuário**
+- ✅ **Interface de gerenciamento de sessões**
+- ✅ **Preview em tempo real (edição de perfil)**
+- ✅ **Cards de organizações com informações detalhadas**
 
 ### Infraestrutura
 - ✅ BaseController com propriedades de contexto do usuário
@@ -155,13 +193,34 @@ UserHasGlobalRole("admin")                // Verifica role global
 - Cada atividade renova o tempo de expiração
 - Verifique a tabela `session` no banco
 
+## Aplicar Migration do Banco de Dados
+
+**IMPORTANTE:** Para usar as funcionalidades de recuperação de senha, execute o seguinte SQL:
+
+```sql
+-- Conectar ao PostgreSQL
+psql -U adm -d basicerp_db
+
+-- Executar o script
+ALTER TABLE account
+ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255),
+ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP,
+ADD COLUMN IF NOT EXISTS last_password_change TIMESTAMP;
+
+CREATE INDEX IF NOT EXISTS idx_account_reset_token ON account(reset_token);
+```
+
+Ou execute o arquivo `migration_password_reset.sql` fornecido.
+
 ## Próximos Passos
 
 Para expandir o sistema, você pode:
 
-1. Implementar recuperação de senha
+1. ~~Implementar recuperação de senha~~ ✅ **Concluído**
 2. Adicionar autenticação two-factor (2FA)
 3. Implementar OAuth (Google, Microsoft, etc.)
 4. Adicionar logs de auditoria
 5. Implementar rate limiting
 6. Adicionar testes unitários e de integração
+7. Implementar notificações em tempo real
+8. Adicionar histórico de atividades

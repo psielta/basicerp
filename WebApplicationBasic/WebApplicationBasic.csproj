@@ -230,6 +230,7 @@
     <Compile Include="App_Start\DependencyConfig.cs" />
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
+    <Compile Include="Controllers\AccountController.cs" />
     <Compile Include="Controllers\AuthController.cs" />
     <Compile Include="Controllers\BaseController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
@@ -239,8 +240,11 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Models\ViewModels\AccountViewModels.cs" />
+    <Compile Include="Models\ViewModels\ForgotPasswordViewModel.cs" />
     <Compile Include="Models\ViewModels\LoginViewModel.cs" />
     <Compile Include="Models\ViewModels\PasswordLoginViewModel.cs" />
+    <Compile Include="Models\ViewModels\ResetPasswordViewModel.cs" />
     <Compile Include="Models\ViewModels\SelectOrganizationViewModel.cs" />
     <Compile Include="Models\ViewModels\VerifyOtpViewModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -266,11 +270,18 @@
     <Content Include="Views\Shared\Error.cshtml" />
     <Content Include="Views\Shared\_Layout.cshtml" />
     <Content Include="Views\Auth\_AuthLayout.cshtml" />
+    <Content Include="Views\Auth\ForgotPassword.cshtml" />
     <Content Include="Views\Auth\Login.cshtml" />
     <Content Include="Views\Auth\LoginWithPassword.cshtml" />
+    <Content Include="Views\Auth\ResetPassword.cshtml" />
     <Content Include="Views\Auth\SelectMethod.cshtml" />
     <Content Include="Views\Auth\SelectOrganization.cshtml" />
     <Content Include="Views\Auth\VerifyOTP.cshtml" />
+    <Content Include="Views\Account\ChangePassword.cshtml" />
+    <Content Include="Views\Account\Edit.cshtml" />
+    <Content Include="Views\Account\Organizations.cshtml" />
+    <Content Include="Views\Account\Profile.cshtml" />
+    <Content Include="Views\Account\Security.cshtml" />
     <Content Include="Views\Home\About.cshtml" />
     <Content Include="Views\Home\Contact.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />

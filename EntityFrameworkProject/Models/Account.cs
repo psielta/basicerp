@@ -44,6 +44,15 @@ namespace EntityFrameworkProject.Models
         [Column("password")]
         public string Password { get; set; }
 
+        [Column("reset_token")]
+        public string ResetToken { get; set; }
+
+        [Column("reset_token_expires")]
+        public DateTime? ResetTokenExpires { get; set; }
+
+        [Column("last_password_change")]
+        public DateTime? LastPasswordChange { get; set; }
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 

@@ -1,0 +1,140 @@
+﻿@model WebApplicationBasic.Models.ViewModels.EditProfileViewModel
+
+@{
+    ViewBag.Title = "Editar Perfil";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Editar Perfil</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Home</a></li>
+        <li class="breadcrumb-item"><a href="@Url.Action("Profile", "Account")">Meu Perfil</a></li>
+        <li class="breadcrumb-item active">Editar</li>
+    </ol>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Informações Pessoais</h5>
+                </div>
+                <div class="card-body">
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="alert alert-danger">
+                            @Html.ValidationSummary(false, "", new { @class = "mb-0" })
+                        </div>
+                    }
+
+                    @using (Html.BeginForm("Edit", "Account", FormMethod.Post, new { @class = "needs-validation" }))
+                    {
+                        @Html.AntiForgeryToken()
+
+                        <div class="mb-3">
+                            <label for="Name" class="form-label">Nome Completo</label>
+                            @Html.TextBoxFor(m => m.Name, new { @class = "form-control", placeholder = "Seu nome completo", required = "required" })
+                            @Html.ValidationMessageFor(m => m.Name, "", new { @class = "text-danger small mt-1" })
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Email" class="form-label">Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-envelope"></i>
+                                </span>
+                                @Html.TextBoxFor(m => m.Email, new { @class = "form-control", placeholder = "seu@email.com", required = "required", type = "email" })
+                            </div>
+                            @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger small mt-1" })
+                            <small class="text-muted">Se você alterar seu email, precisará verificá-lo novamente.</small>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="Image" class="form-label">URL da Imagem de Perfil</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-image"></i>
+                                </span>
+                                @Html.TextBoxFor(m => m.Image, new { @class = "form-control", placeholder = "https://exemplo.com/foto.jpg", type = "url" })
+                            </div>
+                            @Html.ValidationMessageFor(m => m.Image, "", new { @class = "text-danger small mt-1" })
+                            <small class="text-muted">Cole a URL de uma imagem para usar como foto de perfil.</small>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-block">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Salvar Alterações
+                            </button>
+                            <a href="@Url.Action("Profile", "Account")" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> <strong>Dica:</strong> Para alterar sua senha, use a opção <a href="@Url.Action("ChangePassword", "Account")">Alterar Senha</a> no menu de perfil.
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Pré-visualização</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div id="preview-image" class="mb-3">
+                        <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center" style="width: 120px; height: 120px;">
+                            <i class="bi bi-person text-white" style="font-size: 48px;"></i>
+                        </div>
+                    </div>
+                    <h5 id="preview-name">Seu Nome</h5>
+                    <p id="preview-email" class="text-muted">seu@email.com</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    $(document).ready(function () {
+        // Update preview in real-time
+        $('#Name').on('input', function () {
+            var name = $(this).val() || 'Seu Nome';
+            $('#preview-name').text(name);
+        });
+
+        $('#Email').on('input', function () {
+            var email = $(this).val() || 'seu@email.com';
+            $('#preview-email').text(email);
+        });
+
+        $('#Image').on('input', function () {
+            var imageUrl = $(this).val();
+            if (imageUrl) {
+                $('#preview-image').html('<img src="' + imageUrl + '" alt="Preview" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;" onerror="imageError()">');
+            } else {
+                resetImage();
+            }
+        });
+
+        // Initial values
+        $('#Name').trigger('input');
+        $('#Email').trigger('input');
+        if ($('#Image').val()) {
+            $('#Image').trigger('input');
+        }
+    });
+
+    function imageError() {
+        resetImage();
+        alert('Não foi possível carregar a imagem. Verifique se a URL está correta.');
+    }
+
+    function resetImage() {
+        $('#preview-image').html('<div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center" style="width: 120px; height: 120px;"><i class="bi bi-person text-white" style="font-size: 48px;"></i></div>');
+    }
+</script>
+}

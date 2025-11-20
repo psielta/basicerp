@@ -30,9 +30,10 @@ Este projeto de portfolio demonstra uma base SaaS multi-tenant pronta para evolu
 ```
 BasicERP/
 ├── WebApplicationBasic/         # Projeto web ASP.NET MVC
-│   ├── Controllers/             # Controllers MVC (Base, Auth, Home)
+│   ├── Controllers/             # Controllers MVC (Base, Auth, Home, Account)
 │   ├── Views/                   # Views Razor
 │   │   ├── Auth/               # Telas de autenticação
+│   │   ├── Account/            # Telas de gerenciamento de conta
 │   │   └── Shared/             # Layout e parciais
 │   ├── Services/               # Serviços de autenticação, email, sessão
 │   ├── Filters/                # Atributos de autorização customizados
@@ -166,6 +167,8 @@ Para instruções mais detalhadas, consulte o arquivo [AUTHENTICATION_TEST.md](A
 - `provider_id`, `account_id` (par unico)
 - `user_id` (FK), tokens de acesso/refresh/id + expiracoes
 - `scope`, `password` (para credenciais locais)
+- `reset_token`, `reset_token_expires` (recuperação de senha)
+- `last_password_change` (auditoria)
 - `created_at`, `updated_at`
 
 ### Session
@@ -233,6 +236,19 @@ SELECT * FROM session;
   - [x] Proteção de rotas com atributos customizados
   - [x] BaseController com contexto do usuário
   - [x] Seed data para testes
+  - [x] **Recuperação de Senha**
+    - [x] Esqueceu a senha com envio de email
+    - [x] Token seguro de reset (24 horas)
+    - [x] Página de redefinição de senha
+    - [x] Email de confirmação após alteração
+  - [x] **Gerenciamento de Conta ("Minha Conta")**
+    - [x] Perfil do usuário com informações completas
+    - [x] Edição de perfil (nome, email, foto)
+    - [x] Alteração de senha com validação
+    - [x] Gerenciamento de sessões ativas
+    - [x] Visualização e troca de organizações
+    - [x] Indicador de força de senha
+    - [x] Preview em tempo real na edição
 
 ### Em Desenvolvimento
 

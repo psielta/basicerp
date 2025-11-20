@@ -1,0 +1,197 @@
+﻿@model WebApplicationBasic.Models.ViewModels.AccountProfileViewModel
+
+@{
+    ViewBag.Title = "Meu Perfil";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Meu Perfil</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Home</a></li>
+        <li class="breadcrumb-item active">Meu Perfil</li>
+    </ol>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle"></i> @TempData["Warning"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Profile Card -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    @if (!string.IsNullOrEmpty(Model.Image))
+                    {
+                        <img src="@Model.Image" alt="Avatar" class="rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover;">
+                    }
+                    else
+                    {
+                        <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center mb-3" style="width: 120px; height: 120px;">
+                            <i class="bi bi-person text-white" style="font-size: 48px;"></i>
+                        </div>
+                    }
+                    <h4 class="mb-2">@Model.Name</h4>
+                    <p class="text-muted mb-3">@Model.Email</p>
+                    <span class="badge bg-info mb-3">@Model.Role</span>
+
+                    <div class="d-grid gap-2">
+                        <a href="@Url.Action("Edit", "Account")" class="btn btn-primary">
+                            <i class="bi bi-pencil"></i> Editar Perfil
+                        </a>
+                        @if (Model.HasPassword)
+                        {
+                            <a href="@Url.Action("ChangePassword", "Account")" class="btn btn-outline-secondary">
+                                <i class="bi bi-key"></i> Alterar Senha
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Acesso Rápido</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="@Url.Action("Security", "Account")" class="list-group-item list-group-item-action">
+                        <i class="bi bi-shield-lock me-2"></i> Segurança e Sessões
+                    </a>
+                    <a href="@Url.Action("Organizations", "Account")" class="list-group-item list-group-item-action">
+                        <i class="bi bi-buildings me-2"></i> Minhas Organizações
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details Cards -->
+        <div class="col-xl-8 col-lg-7">
+            <!-- Account Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Informações da Conta</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">Nome Completo:</div>
+                        <div class="col-sm-8">@Model.Name</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">Email:</div>
+                        <div class="col-sm-8">
+                            @Model.Email
+                            @if (Model.EmailVerified)
+                            {
+                                <span class="badge bg-success ms-2"><i class="bi bi-check-circle"></i> Verificado</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning ms-2"><i class="bi bi-exclamation-circle"></i> Não verificado</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">Função:</div>
+                        <div class="col-sm-8">@Model.Role</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted">Conta criada em:</div>
+                        <div class="col-sm-8">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                    </div>
+                    @if (Model.LastPasswordChange.HasValue)
+                    {
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-muted">Última alteração de senha:</div>
+                            <div class="col-sm-8">@Model.LastPasswordChange.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Security Settings -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Configurações de Segurança</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="mb-0">Autenticação com Senha</h6>
+                            <small class="text-muted">Use uma senha para fazer login</small>
+                        </div>
+                        <div>
+                            @if (Model.HasPassword)
+                            {
+                                <span class="badge bg-success">Ativo</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inativo</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">Verificação em Duas Etapas</h6>
+                            <small class="text-muted">Adicione uma camada extra de segurança</small>
+                        </div>
+                        <div>
+                            @if (Model.TwoFactorEnabled)
+                            {
+                                <span class="badge bg-success">Ativo</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inativo</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Organizations -->
+            @if (Model.Organizations != null && Model.Organizations.Any())
+            {
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Organizações</h5>
+                        <a href="@Url.Action("Organizations", "Account")" class="btn btn-sm btn-outline-primary">Ver todas</a>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        @foreach (var org in Model.Organizations.Take(3))
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">
+                                            @org.OrganizationName
+                                            @if (org.IsCurrent)
+                                            {
+                                                <span class="badge bg-primary ms-2">Atual</span>
+                                            }
+                                        </h6>
+                                        <small class="text-muted">Função: @org.Role • Membro desde: @org.JoinedAt.ToString("dd/MM/yyyy")</small>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

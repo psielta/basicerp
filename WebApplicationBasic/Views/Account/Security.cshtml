@@ -1,0 +1,203 @@
+﻿@model WebApplicationBasic.Models.ViewModels.AccountSecurityViewModel
+
+@{
+    ViewBag.Title = "Segurança";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Segurança e Sessões</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Home</a></li>
+        <li class="breadcrumb-item"><a href="@Url.Action("Profile", "Account")">Meu Perfil</a></li>
+        <li class="breadcrumb-item active">Segurança</li>
+    </ol>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle"></i> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Active Sessions -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Sessões Ativas</h5>
+            @if (Model.Sessions != null && Model.Sessions.Count > 1)
+            {
+                <form action="@Url.Action("RevokeAllSessions", "Account")" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja encerrar todas as outras sessões?');">
+                        <i class="bi bi-shield-x"></i> Encerrar Outras Sessões
+                    </button>
+                </form>
+            }
+        </div>
+        <div class="card-body">
+            @if (Model.Sessions != null && Model.Sessions.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Dispositivo</th>
+                                <th>Localização</th>
+                                <th>Organização</th>
+                                <th>Data de Login</th>
+                                <th>Expira em</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var session in Model.Sessions.OrderByDescending(s => s.IsCurrent).ThenByDescending(s => s.CreatedAt))
+                            {
+                                <tr class="@(session.IsCurrent ? "table-primary" : "")">
+                                    <td>
+                                        <div>
+                                            <i class="bi bi-@GetDeviceIcon(session.DeviceInfo)"></i>
+                                            <strong>@session.BrowserInfo</strong> em @session.DeviceInfo
+                                        </div>
+                                        @if (session.IsCurrent)
+                                        {
+                                            <span class="badge bg-success">Sessão Atual</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>@(string.IsNullOrEmpty(session.IpAddress) ? "IP não disponível" : session.IpAddress)</small>
+                                    </td>
+                                    <td>
+                                        <small>@session.OrganizationName</small>
+                                    </td>
+                                    <td>
+                                        <small>@session.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                                    </td>
+                                    <td>
+                                        @{
+                                            var timeRemaining = session.ExpiresAt - DateTime.UtcNow;
+                                            if (timeRemaining.TotalDays >= 1)
+                                            {
+                                                <small>@((int)timeRemaining.TotalDays) dias</small>
+                                            }
+                                            else if (timeRemaining.TotalHours >= 1)
+                                            {
+                                                <small>@((int)timeRemaining.TotalHours) horas</small>
+                                            }
+                                            else
+                                            {
+                                                <small>@((int)timeRemaining.TotalMinutes) minutos</small>
+                                            }
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!session.IsCurrent)
+                                        {
+                                            <form action="@Url.Action("RevokeSession", "Account")" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="sessionToken" value="@session.Token" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja encerrar esta sessão?');">
+                                                    <i class="bi bi-x-circle"></i> Encerrar
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">-</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle"></i> Se você notar alguma sessão suspeita, encerre-a imediatamente e altere sua senha.
+                </div>
+            }
+            else
+            {
+                <p class="text-muted">Nenhuma sessão ativa encontrada.</p>
+            }
+        </div>
+    </div>
+
+    <!-- Security Settings -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Configurações de Segurança</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                        <div>
+                            <h6 class="mb-0">Verificação em Duas Etapas</h6>
+                            <small class="text-muted">Adicione uma camada extra de segurança à sua conta</small>
+                        </div>
+                        <div>
+                            @if (Model.TwoFactorEnabled)
+                            {
+                                <span class="badge bg-success">Ativo</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inativo</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">Alertas de Segurança</h6>
+                            <small class="text-muted">Receba notificações sobre atividades suspeitas</small>
+                        </div>
+                        <div>
+                            <span class="badge bg-success">Ativo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Ações Rápidas</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="@Url.Action("ChangePassword", "Account")" class="list-group-item list-group-item-action">
+                        <i class="bi bi-key me-2"></i> Alterar Senha
+                    </a>
+                    <a href="@Url.Action("Edit", "Account")" class="list-group-item list-group-item-action">
+                        <i class="bi bi-person-gear me-2"></i> Editar Perfil
+                    </a>
+                    <a href="@Url.Action("Organizations", "Account")" class="list-group-item list-group-item-action">
+                        <i class="bi bi-buildings me-2"></i> Gerenciar Organizações
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    string GetDeviceIcon(string device)
+    {
+        if (device.Contains("Windows")) return "windows";
+        if (device.Contains("macOS")) return "apple";
+        if (device.Contains("Linux")) return "ubuntu";
+        if (device.Contains("iOS")) return "phone";
+        if (device.Contains("Android")) return "phone";
+        return "laptop";
+    }
+}

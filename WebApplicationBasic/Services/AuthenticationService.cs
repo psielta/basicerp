@@ -277,6 +277,163 @@ namespace WebApplicationBasic.Services
             }
             catch { }
         }
+
+        public async Task<string> GeneratePasswordResetTokenAsync(string email, string baseUrl = null)
+        {
+            var user = await ValidateUserByEmailAsync(email);
+            if (user == null)
+                return null; // Don't reveal if user exists
+
+            var account = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.UserId == user.Id && a.ProviderId == "local");
+
+            if (account == null)
+                return null; // User doesn't have a password account
+
+            // Generate secure reset token
+            var token = GenerateSecureToken();
+            account.ResetToken = token;
+            account.ResetTokenExpires = DateTime.UtcNow.AddHours(24);
+            account.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            // Send reset email
+            if (string.IsNullOrEmpty(baseUrl))
+            {
+                // Fallback para configuração no Web.config
+                baseUrl = System.Configuration.ConfigurationManager.AppSettings["BaseUrl"] ?? "http://localhost:44318";
+            }
+            var resetUrl = $"{baseUrl}/Auth/ResetPassword?token={token}";
+            await _emailService.SendPasswordResetEmailAsync(user.Email, user.Name, resetUrl);
+
+            return token;
+        }
+
+        public async Task<bool> ValidateResetTokenAsync(string token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return false;
+
+            var account = await _context.Accounts
+                .Include(a => a.User)
+                .FirstOrDefaultAsync(a => a.ResetToken == token);
+
+            if (account == null)
+                return false;
+
+            if (account.ResetTokenExpires == null || account.ResetTokenExpires < DateTime.UtcNow)
+                return false;
+
+            return true;
+        }
+
+        public async Task<User> GetUserByResetTokenAsync(string token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return null;
+
+            var account = await _context.Accounts
+                .Include(a => a.User)
+                    .ThenInclude(u => u.Memberships)
+                        .ThenInclude(m => m.Organization)
+                .FirstOrDefaultAsync(a => a.ResetToken == token);
+
+            if (account == null || account.ResetTokenExpires == null || account.ResetTokenExpires < DateTime.UtcNow)
+                return null;
+
+            return account.User;
+        }
+
+        public async Task<bool> ResetPasswordAsync(string token, string newPassword)
+        {
+            if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(newPassword))
+                return false;
+
+            var account = await _context.Accounts
+                .Include(a => a.User)
+                .FirstOrDefaultAsync(a => a.ResetToken == token);
+
+            if (account == null || account.ResetTokenExpires == null || account.ResetTokenExpires < DateTime.UtcNow)
+                return false;
+
+            // Update password
+            account.Password = _passwordHasher.HashPassword(newPassword);
+            account.ResetToken = null;
+            account.ResetTokenExpires = null;
+            account.LastPasswordChange = DateTime.UtcNow;
+            account.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            // Send confirmation email
+            await _emailService.SendPasswordChangedEmailAsync(account.User.Email, account.User.Name);
+
+            return true;
+        }
+
+        public async Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
+        {
+            var account = await _context.Accounts
+                .Include(a => a.User)
+                .FirstOrDefaultAsync(a => a.UserId == userId && a.ProviderId == "local");
+
+            if (account == null)
+                return false;
+
+            // Validate current password
+            if (!_passwordHasher.VerifyPassword(currentPassword, account.Password))
+                return false;
+
+            // Update password
+            account.Password = _passwordHasher.HashPassword(newPassword);
+            account.LastPasswordChange = DateTime.UtcNow;
+            account.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            // Send confirmation email
+            await _emailService.SendPasswordChangedEmailAsync(account.User.Email, account.User.Name);
+
+            return true;
+        }
+
+        public async Task<List<Session>> GetUserSessionsAsync(Guid userId)
+        {
+            return await _context.Sessions
+                .Where(s => s.UserId == userId && s.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(s => s.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<bool> RevokeSessionAsync(string sessionToken, Guid userId)
+        {
+            var session = await _context.Sessions
+                .FirstOrDefaultAsync(s => s.Token == sessionToken && s.UserId == userId);
+
+            if (session == null)
+                return false;
+
+            session.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+            session.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        private string GenerateSecureToken()
+        {
+            using (var rng = new RNGCryptoServiceProvider())
+            {
+                var bytes = new byte[32];
+                rng.GetBytes(bytes);
+                return Convert.ToBase64String(bytes)
+                    .Replace("+", "")
+                    .Replace("/", "")
+                    .Replace("=", "")
+                    .Substring(0, 32);
+            }
+        }
     }
 
     public interface IAuthenticationService
@@ -290,5 +447,16 @@ namespace WebApplicationBasic.Services
         void SignOut(HttpContextBase httpContext);
         Task<List<Organization>> GetUserOrganizationsAsync(Guid userId);
         Task<bool> CreateLocalAccountAsync(Guid userId, string password);
+
+        // Password reset methods
+        Task<string> GeneratePasswordResetTokenAsync(string email, string baseUrl = null);
+        Task<bool> ValidateResetTokenAsync(string token);
+        Task<User> GetUserByResetTokenAsync(string token);
+        Task<bool> ResetPasswordAsync(string token, string newPassword);
+
+        // Account management methods
+        Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword);
+        Task<List<Session>> GetUserSessionsAsync(Guid userId);
+        Task<bool> RevokeSessionAsync(string sessionToken, Guid userId);
     }
 }

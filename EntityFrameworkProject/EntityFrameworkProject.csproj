@@ -146,6 +146,10 @@
     <Compile Include="Migrations\20251120141928_InitialSaaS.Designer.cs">
       <DependentUpon>20251120141928_InitialSaaS.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\20251120164824_AddResetPassword.cs" />
+    <Compile Include="Migrations\20251120164824_AddResetPassword.Designer.cs">
+      <DependentUpon>20251120164824_AddResetPassword.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\ApplicationDbContextModelSnapshot.cs" />
     <Compile Include="Models\Account.cs" />
     <Compile Include="Models\Membership.cs" />

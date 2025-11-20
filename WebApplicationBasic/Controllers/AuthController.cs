@@ -348,5 +348,85 @@ namespace WebApplicationBasic.Controllers
             }
             return RedirectToAction("Index", "Home");
         }
+
+        // GET: /Auth/ForgotPassword
+        [HttpGet]
+        public ActionResult ForgotPassword()
+        {
+            if (User.Identity.IsAuthenticated)
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
+            return View(new ForgotPasswordViewModel());
+        }
+
+        // POST: /Auth/ForgotPassword
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            // Always show success message to not reveal if email exists
+            var baseUrl = System.Configuration.ConfigurationManager.AppSettings["BaseUrl"];
+            var result = await _authService.GeneratePasswordResetTokenAsync(model.Email, baseUrl);
+
+            TempData["Success"] = "Se o email estiver cadastrado, você receberá instruções para redefinir sua senha.";
+            return View(new ForgotPasswordViewModel());
+        }
+
+        // GET: /Auth/ResetPassword
+        [HttpGet]
+        public async Task<ActionResult> ResetPassword(string token)
+        {
+            if (string.IsNullOrEmpty(token))
+            {
+                return RedirectToAction("Login");
+            }
+
+            var isValid = await _authService.ValidateResetTokenAsync(token);
+            if (!isValid)
+            {
+                TempData["Error"] = "Link de redefinição inválido ou expirado.";
+                return RedirectToAction("ForgotPassword");
+            }
+
+            var user = await _authService.GetUserByResetTokenAsync(token);
+            var model = new ResetPasswordViewModel
+            {
+                Token = token,
+                Email = user?.Email
+            };
+
+            return View(model);
+        }
+
+        // POST: /Auth/ResetPassword
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> ResetPassword(ResetPasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var success = await _authService.ResetPasswordAsync(model.Token, model.Password);
+
+            if (success)
+            {
+                TempData["Success"] = "Sua senha foi redefinida com sucesso! Você já pode fazer login.";
+                return RedirectToAction("Login");
+            }
+            else
+            {
+                ModelState.AddModelError("", "Link de redefinição inválido ou expirado.");
+                return View(model);
+            }
+        }
     }
 }
