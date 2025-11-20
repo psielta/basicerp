@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: reaproveitar-postgres
+    environment:
+      POSTGRES_USER: adm
+      POSTGRES_PASSWORD: 156879
+      POSTGRES_DB: basic_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - reaproveitar-network
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: reaproveitar-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@reaproveitar.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - reaproveitar-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  reaproveitar-network:
+    driver: bridge
