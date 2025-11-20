@@ -225,6 +225,7 @@ namespace WebApplicationBasic.Controllers
                 ViewBag.CurrentUserId = CurrentUserId;
                 ViewBag.CurrentUserName = CurrentUserName;
                 ViewBag.CurrentUserEmail = CurrentUserEmail;
+                ViewBag.CurrentUserImage = CurrentUser?.Image;
                 ViewBag.CurrentOrganizationId = CurrentOrganizationId;
                 ViewBag.CurrentOrganizationName = CurrentOrganizationName;
                 ViewBag.CurrentOrganizationRole = CurrentOrganizationRole;

@@ -18,6 +18,10 @@ namespace WebApplicationBasic.Models.ViewModels
 
         public string UserEmail { get; set; }
 
+        public string UserName { get; set; }
+
+        public string UserImage { get; set; }
+
         public string OrganizationName { get; set; }
 
         public string ReturnUrl { get; set; }

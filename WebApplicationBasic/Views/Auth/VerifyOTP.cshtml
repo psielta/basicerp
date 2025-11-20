@@ -16,10 +16,23 @@
 
     <div class="auth-body">
         <div class="user-info-box">
-            <div class="mb-2">
-                <i class="bi bi-person-circle"></i> <strong>@Model.UserEmail</strong>
+            <div class="d-flex align-items-center mb-3">
+                @if (!string.IsNullOrEmpty(Model.UserImage))
+                {
+                    <img src="@Model.UserImage" alt="@Model.UserName" class="rounded-circle me-3" style="width: 48px; height: 48px; object-fit: cover;">
+                }
+                else
+                {
+                    <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                        <i class="bi bi-person text-white" style="font-size: 24px;"></i>
+                    </div>
+                }
+                <div>
+                    <strong>@Model.UserName</strong><br>
+                    <small class="text-muted">@Model.UserEmail</small>
+                </div>
             </div>
-            <div>
+            <div class="border-top pt-2">
                 <i class="bi bi-building"></i> <strong>@Model.OrganizationName</strong>
             </div>
         </div>
@@ -48,6 +61,8 @@
             @Html.HiddenFor(m => m.UserId)
             @Html.HiddenFor(m => m.OrganizationId)
             @Html.HiddenFor(m => m.UserEmail)
+            @Html.HiddenFor(m => m.UserName)
+            @Html.HiddenFor(m => m.UserImage)
             @Html.HiddenFor(m => m.OrganizationName)
             @Html.HiddenFor(m => m.ReturnUrl)
 

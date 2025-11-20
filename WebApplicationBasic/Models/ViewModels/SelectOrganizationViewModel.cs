@@ -13,6 +13,8 @@ namespace WebApplicationBasic.Models.ViewModels
 
         public string UserEmail { get; set; }
 
+        public string UserImage { get; set; }
+
         [Required(ErrorMessage = "Selecione uma organização")]
         [Display(Name = "Organização")]
         public Guid OrganizationId { get; set; }

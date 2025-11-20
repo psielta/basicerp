@@ -22,6 +22,7 @@ Este projeto de portfolio demonstra uma base SaaS multi-tenant pronta para evolu
 - **Provider**: Npgsql 4.1.9
 - **Autenticação**: OWIN Cookie Authentication + BCrypt.NET
 - **Email**: MailKit + MailHog (desenvolvimento)
+- **Storage**: MinIO para armazenamento de arquivos (fotos de perfil)
 - **Containerizacao**: Docker & Docker Compose
 - **UI**: Bootstrap 5.3.3 + Bootstrap Icons
 
@@ -35,7 +36,7 @@ BasicERP/
 │   │   ├── Auth/               # Telas de autenticação
 │   │   ├── Account/            # Telas de gerenciamento de conta
 │   │   └── Shared/             # Layout e parciais
-│   ├── Services/               # Serviços de autenticação, email, sessão
+│   ├── Services/               # Serviços de autenticação, email, sessão, storage
 │   ├── Filters/                # Atributos de autorização customizados
 │   ├── Models/ViewModels/      # ViewModels para formulários
 │   ├── Data/                   # SeedData para testes
@@ -45,7 +46,7 @@ BasicERP/
 │   ├── Models/                 # Entidades (organization, user, etc.)
 │   ├── Data/                   # DbContext e factory
 │   └── app.config              # Connection strings
-├── docker-compose.yml          # PostgreSQL + PgAdmin + MailHog + Redis + RabbitMQ
+├── docker-compose.yml          # PostgreSQL + PgAdmin + MailHog + Redis + RabbitMQ + MinIO
 ├── AUTHENTICATION_TEST.md      # Instruções detalhadas de teste
 └── README.md
 ```
@@ -86,6 +87,10 @@ Servicos disponiveis:
 - **RabbitMQ** na porta `15672` (Management) e `5672` (AMQP)
   - Interface: http://localhost:15672
   - Usuario/Senha: guest/guest
+- **MinIO** na porta `9000` (API) e `9001` (Console)
+  - Console: http://localhost:9001
+  - API: http://localhost:9000
+  - Usuario/Senha: minioadmin/minioadmin
 
 ### Passo 3: Restaurar Pacotes NuGet
 
@@ -249,6 +254,12 @@ SELECT * FROM session;
     - [x] Visualização e troca de organizações
     - [x] Indicador de força de senha
     - [x] Preview em tempo real na edição
+  - [x] **Upload de Fotos de Perfil**
+    - [x] Integração com MinIO para storage
+    - [x] Interface IStorageService implementada
+    - [x] Upload de arquivos na edição de perfil
+    - [x] Validação de tipos de arquivo (jpg, png)
+    - [x] Redimensionamento e otimização de imagens (max 800x800, 85% qualidade)
 
 ### Em Desenvolvimento
 
@@ -287,7 +298,11 @@ SELECT * FROM session;
 
 `Microsoft.Extensions.DependencyInjection` gerencia as dependencias:
 
-- `ApplicationDbContext`: Scoped (uma instancia por requisicao)
+- `ApplicationDbContext`: Transient (evita problemas de disposed)
+- `IPasswordHasher`, `IEmailService`, `ISessionService`: Transient
+- `IAuthenticationService`: Transient
+- `IStorageService` (MinIOStorageService): Transient
+- `IImageProcessingService`: Transient
 - Controllers: Transient
 
 ### Binding Redirects
@@ -297,6 +312,29 @@ Como o projeto usa .NET Framework + EF Core, os binding redirects definidos no `
 ### Multi-Tenancy
 
 A separacao de dados acontece via `memberships`: cada usuario pode pertencer a varias organizations, e os relacionamentos trazem `organization_id`/`user_id` em todas as tabelas dependentes. Um filtro global de tenant podera ser adicionado futuramente no `DbContext`.
+
+### Storage com MinIO
+
+O sistema utiliza MinIO para armazenamento de arquivos, especialmente fotos de perfil dos usuários:
+
+- **Bucket**: `user-profiles` (criado automaticamente se não existir)
+- **Política**: Configurada para leitura pública das imagens
+- **Serviço**: `IStorageService` abstrai operações de upload/download/delete
+- **Implementação**: `MinIOStorageService` usando SDK oficial do MinIO
+
+### Processamento de Imagens
+
+Sistema completo de processamento de imagens antes do upload:
+
+- **Redimensionamento automático**: Máximo 800x800 pixels mantendo proporção
+- **Otimização**: Compressão JPEG em 85% de qualidade
+- **Validação**: Aceita apenas JPG, JPEG e PNG
+- **Limite de tamanho**: 5MB (configurável no Web.config)
+- **Configurações personalizáveis** no Web.config:
+  - `Image:MaxWidth`: Largura máxima (padrão 800)
+  - `Image:MaxHeight`: Altura máxima (padrão 800)
+  - `Image:Quality`: Qualidade JPEG 0-100 (padrão 85)
+  - `Image:MaxFileSize`: Tamanho máximo em bytes (padrão 5242880)
 
 ## Contribuindo
 

@@ -275,9 +275,16 @@
                     @if (User.Identity.IsAuthenticated)
                     {
                         <div class="dropdown">
-                            <button class="btn btn-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-person-circle"></i>
-                                @ViewBag.CurrentUserName
+                            <button class="btn btn-light dropdown-toggle d-flex align-items-center" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                @if (!string.IsNullOrEmpty(ViewBag.CurrentUserImage))
+                                {
+                                    <img src="@ViewBag.CurrentUserImage" alt="@ViewBag.CurrentUserName" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;" />
+                                }
+                                else
+                                {
+                                    <i class="bi bi-person-circle me-2" style="font-size: 1.5rem;"></i>
+                                }
+                                <span>@ViewBag.CurrentUserName</span>
                                 @if (!string.IsNullOrEmpty(ViewBag.CurrentOrganizationName))
                                 {
                                     <span class="badge bg-primary ms-2">@ViewBag.CurrentOrganizationName</span>

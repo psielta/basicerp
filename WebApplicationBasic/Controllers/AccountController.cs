@@ -1,4 +1,5 @@
 using System;
+using System.Configuration;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web.Mvc;
@@ -14,11 +15,15 @@ namespace WebApplicationBasic.Controllers
     {
         private readonly IAuthenticationService _authService;
         private readonly ApplicationDbContext _context;
+        private readonly IStorageService _storageService;
+        private readonly IImageProcessingService _imageProcessingService;
 
         public AccountController()
         {
             _authService = DependencyResolver.Current.GetService<IAuthenticationService>();
             _context = DependencyResolver.Current.GetService<ApplicationDbContext>();
+            _storageService = DependencyResolver.Current.GetService<IStorageService>();
+            _imageProcessingService = DependencyResolver.Current.GetService<IImageProcessingService>();
         }
 
         // GET: /Account
@@ -82,7 +87,8 @@ namespace WebApplicationBasic.Controllers
             {
                 Name = user.Name,
                 Email = user.Email,
-                Image = user.Image
+                ImageUrl = user.Image?.StartsWith("http") == true ? user.Image : null,
+                CurrentImage = user.Image
             };
 
             return View(model);
@@ -119,9 +125,87 @@ namespace WebApplicationBasic.Controllers
                 user.EmailVerified = false; // Reset email verification
             }
 
+            // Process image upload or URL
+            string newImageUrl = null;
+
+            // Priority 1: File upload
+            if (model.ImageFile != null && model.ImageFile.ContentLength > 0)
+            {
+                // Validate file type
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+                var extension = System.IO.Path.GetExtension(model.ImageFile.FileName).ToLower();
+
+                if (!allowedExtensions.Contains(extension))
+                {
+                    ModelState.AddModelError("ImageFile", "Apenas arquivos JPG e PNG são permitidos.");
+                    return View(model);
+                }
+
+                // Validate file size from config
+                var maxFileSize = int.Parse(ConfigurationManager.AppSettings["Image:MaxFileSize"] ?? "5242880");
+                if (model.ImageFile.ContentLength > maxFileSize)
+                {
+                    ModelState.AddModelError("ImageFile", "A imagem deve ter no máximo 5MB.");
+                    return View(model);
+                }
+
+                try
+                {
+                    // Generate unique filename
+                    var fileName = $"profile_{CurrentUserId}_{Guid.NewGuid()}{extension}";
+
+                    // Get image processing configuration
+                    var maxWidth = int.Parse(ConfigurationManager.AppSettings["Image:MaxWidth"] ?? "800");
+                    var maxHeight = int.Parse(ConfigurationManager.AppSettings["Image:MaxHeight"] ?? "800");
+                    var quality = long.Parse(ConfigurationManager.AppSettings["Image:Quality"] ?? "85");
+
+                    // Resize image before upload
+                    using (var resizedImageStream = _imageProcessingService.ResizeImage(
+                        model.ImageFile.InputStream,
+                        maxWidth,
+                        maxHeight,
+                        quality))
+                    {
+                        // Upload to MinIO
+                        newImageUrl = await _storageService.UploadFileAsync(
+                            resizedImageStream,
+                            fileName,
+                            model.ImageFile.ContentType
+                        );
+                    }
+
+                    // Delete old image if it exists and is from MinIO
+                    if (!string.IsNullOrEmpty(user.Image) && user.Image.Contains("user-profiles"))
+                    {
+                        await _storageService.DeleteFileAsync(user.Image);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("ImageFile", $"Erro ao fazer upload da imagem: {ex.Message}");
+                    return View(model);
+                }
+            }
+            // Priority 2: URL provided
+            else if (!string.IsNullOrEmpty(model.ImageUrl))
+            {
+                newImageUrl = model.ImageUrl;
+
+                // Delete old image if it exists and is from MinIO (user switched to URL)
+                if (!string.IsNullOrEmpty(user.Image) && user.Image.Contains("user-profiles"))
+                {
+                    await _storageService.DeleteFileAsync(user.Image);
+                }
+            }
+            // Priority 3: Keep current image
+            else
+            {
+                newImageUrl = model.CurrentImage;
+            }
+
             user.Name = model.Name;
             user.Email = model.Email;
-            user.Image = model.Image;
+            user.Image = newImageUrl;
             user.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

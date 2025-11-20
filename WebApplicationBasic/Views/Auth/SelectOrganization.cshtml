@@ -18,7 +18,14 @@
         <div class="user-info-box">
             <div class="d-flex align-items-center">
                 <div class="user-avatar">
-                    <i class="bi bi-person"></i>
+                    @if (!string.IsNullOrEmpty(Model.UserImage))
+                    {
+                        <img src="@Model.UserImage" alt="@Model.UserName" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
+                    }
+                    else
+                    {
+                        <i class="bi bi-person"></i>
+                    }
                 </div>
                 <div>
                     <strong>@Model.UserName</strong><br>

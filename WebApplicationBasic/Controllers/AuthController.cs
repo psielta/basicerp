@@ -102,6 +102,7 @@ namespace WebApplicationBasic.Controllers
                 UserId = userId,
                 UserName = user.Name,
                 UserEmail = user.Email,
+                UserImage = user.Image,
                 Organizations = organizations.Select(o =>
                 {
                     var membership = user.Memberships?.FirstOrDefault(m => m.OrganizationId == o.Id);
@@ -205,6 +206,8 @@ namespace WebApplicationBasic.Controllers
                 UserId = userId,
                 OrganizationId = organizationId,
                 UserEmail = user.Email,
+                UserName = user.Name,
+                UserImage = user.Image,
                 OrganizationName = organization.Name,
                 ReturnUrl = returnUrl
             };
@@ -248,6 +251,8 @@ namespace WebApplicationBasic.Controllers
                 UserId = userId,
                 OrganizationId = organizationId,
                 UserEmail = user.Email,
+                UserName = user.Name,
+                UserImage = user.Image,
                 OrganizationName = organization.Name,
                 ReturnUrl = returnUrl,
                 CanResend = true,

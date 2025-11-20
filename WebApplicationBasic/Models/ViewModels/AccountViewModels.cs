@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Web;
 
 namespace WebApplicationBasic.Models.ViewModels
 {
@@ -41,9 +42,15 @@ namespace WebApplicationBasic.Models.ViewModels
         [Display(Name = "Email")]
         public string Email { get; set; }
 
-        [Display(Name = "URL da Imagem")]
+        [Display(Name = "Foto de Perfil")]
+        public HttpPostedFileBase ImageFile { get; set; }
+
+        [Display(Name = "URL da Imagem (alternativa)")]
         [Url(ErrorMessage = "URL inválida")]
-        public string Image { get; set; }
+        public string ImageUrl { get; set; }
+
+        // Campo oculto para manter a imagem atual
+        public string CurrentImage { get; set; }
     }
 
     public class ChangePasswordViewModel

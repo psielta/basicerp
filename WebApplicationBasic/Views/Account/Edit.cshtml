@@ -27,9 +27,10 @@
                         </div>
                     }
 
-                    @using (Html.BeginForm("Edit", "Account", FormMethod.Post, new { @class = "needs-validation" }))
+                    @using (Html.BeginForm("Edit", "Account", FormMethod.Post, new { @class = "needs-validation", enctype = "multipart/form-data" }))
                     {
                         @Html.AntiForgeryToken()
+                        @Html.HiddenFor(m => m.CurrentImage)
 
                         <div class="mb-3">
                             <label for="Name" class="form-label">Nome Completo</label>
@@ -49,16 +50,26 @@
                             <small class="text-muted">Se você alterar seu email, precisará verificá-lo novamente.</small>
                         </div>
 
+                        <div class="mb-3">
+                            <label for="ImageFile" class="form-label">Foto de Perfil</label>
+                            <input type="file" name="ImageFile" id="ImageFile" class="form-control" accept="image/jpeg,image/png,image/jpg" />
+                            <small class="text-muted">Faça upload de uma imagem (JPG, PNG). Tamanho máximo: 5MB.</small>
+                        </div>
+
+                        <div class="text-center mb-3">
+                            <span class="text-muted">- OU -</span>
+                        </div>
+
                         <div class="mb-4">
-                            <label for="Image" class="form-label">URL da Imagem de Perfil</label>
+                            <label for="ImageUrl" class="form-label">URL da Imagem (alternativa)</label>
                             <div class="input-group">
                                 <span class="input-group-text">
-                                    <i class="bi bi-image"></i>
+                                    <i class="bi bi-link-45deg"></i>
                                 </span>
-                                @Html.TextBoxFor(m => m.Image, new { @class = "form-control", placeholder = "https://exemplo.com/foto.jpg", type = "url" })
+                                @Html.TextBoxFor(m => m.ImageUrl, new { @class = "form-control", placeholder = "https://exemplo.com/foto.jpg", type = "url" })
                             </div>
-                            @Html.ValidationMessageFor(m => m.Image, "", new { @class = "text-danger small mt-1" })
-                            <small class="text-muted">Cole a URL de uma imagem para usar como foto de perfil.</small>
+                            @Html.ValidationMessageFor(m => m.ImageUrl, "", new { @class = "text-danger small mt-1" })
+                            <small class="text-muted">Ou cole a URL de uma imagem externa.</small>
                         </div>
 
                         <div class="d-grid gap-2 d-md-block">
@@ -111,10 +122,48 @@
             $('#preview-email').text(email);
         });
 
-        $('#Image').on('input', function () {
+        // Preview for file upload
+        $('#ImageFile').on('change', function () {
+            var file = this.files[0];
+            if (file) {
+                // Validate file type
+                var validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+                if (!validTypes.includes(file.type)) {
+                    alert('Por favor, selecione uma imagem válida (JPG ou PNG).');
+                    $(this).val('');
+                    resetImage();
+                    return;
+                }
+
+                // Validate file size (5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('A imagem deve ter no máximo 5MB.');
+                    $(this).val('');
+                    resetImage();
+                    return;
+                }
+
+                // Preview image
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    $('#preview-image').html('<img src="' + e.target.result + '" alt="Preview" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;">');
+                };
+                reader.readAsDataURL(file);
+
+                // Clear URL field if file is selected
+                $('#ImageUrl').val('');
+            } else {
+                resetImage();
+            }
+        });
+
+        // Preview for URL input
+        $('#ImageUrl').on('input', function () {
             var imageUrl = $(this).val();
             if (imageUrl) {
                 $('#preview-image').html('<img src="' + imageUrl + '" alt="Preview" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;" onerror="imageError()">');
+                // Clear file input if URL is entered
+                $('#ImageFile').val('');
             } else {
                 resetImage();
             }
@@ -123,8 +172,8 @@
         // Initial values
         $('#Name').trigger('input');
         $('#Email').trigger('input');
-        if ($('#Image').val()) {
-            $('#Image').trigger('input');
+        if ($('#ImageUrl').val()) {
+            $('#ImageUrl').trigger('input');
         }
     });
 
@@ -134,7 +183,12 @@
     }
 
     function resetImage() {
-        $('#preview-image').html('<div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center" style="width: 120px; height: 120px;"><i class="bi bi-person text-white" style="font-size: 48px;"></i></div>');
+        var currentImage = $('#CurrentImage').val();
+        if (currentImage) {
+            $('#preview-image').html('<img src="' + currentImage + '" alt="Preview" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;">');
+        } else {
+            $('#preview-image').html('<div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center" style="width: 120px; height: 120px;"><i class="bi bi-person text-white" style="font-size: 48px;"></i></div>');
+        }
     }
 </script>
 }

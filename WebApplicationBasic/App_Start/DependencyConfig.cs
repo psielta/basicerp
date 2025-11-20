@@ -33,6 +33,8 @@ namespace WebApplicationBasic.App_Start
             services.AddTransient<IEmailService, EmailService>();
             services.AddTransient<ISessionService, SessionService>();
             services.AddTransient<IAuthenticationService, AuthenticationService>();
+            services.AddTransient<IStorageService, MinIOStorageService>();
+            services.AddTransient<IImageProcessingService, ImageProcessingService>();
 
             // Registrar controllers
             services.AddTransient<WebApplicationBasic.Controllers.HomeController>();
