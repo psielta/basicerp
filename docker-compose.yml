@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: reaproveitar-postgres
+    container_name: basicerp-postgres
     environment:
       POSTGRES_USER: adm
       POSTGRES_PASSWORD: 156879
@@ -13,26 +13,26 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - reaproveitar-network
+      - basicerp-network
     restart: unless-stopped
 
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: reaproveitar-pgadmin
+    container_name: basicerp-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@reaproveitar.com
+      PGADMIN_DEFAULT_EMAIL: admin@basicerp.com
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"
     depends_on:
       - postgres
     networks:
-      - reaproveitar-network
+      - basicerp-network
     restart: unless-stopped
 
 volumes:
   postgres_data:
 
 networks:
-  reaproveitar-network:
+  basicerp-network:
     driver: bridge

@@ -53,7 +53,7 @@ BasicERP/
 
 ```bash
 git clone https://github.com/psielta/basicerp.git
-cd reaproveitar
+cd basicerp
 ```
 
 ### Passo 2: Subir o PostgreSQL com Docker
@@ -68,7 +68,7 @@ Isso irá iniciar:
   - Usuário: `adm`
   - Senha: `156879`
 - **PgAdmin** na porta `5050`
-  - Email: `admin@reaproveitar.com`
+  - Email: `admin@basicerp.com`
   - Senha: `admin`
 
 ### Passo 3: Restaurar Pacotes NuGet
@@ -145,10 +145,10 @@ docker-compose down
 docker-compose down -v
 
 # Ver logs do PostgreSQL
-docker logs reaproveitar-postgres
+docker logs basicerp-postgres
 
 # Conectar ao PostgreSQL via CLI
-docker exec -it reaproveitar-postgres psql -U adm -d basic_db
+docker exec -it basicerp-postgres psql -U adm -d basic_db
 ```
 
 ### Entity Framework Migrations
@@ -260,7 +260,7 @@ Este projeto está sob a licença MIT.
 
 ## 👤 Autor
 
-[Seu Nome]
+Mateus A. S. Salgueiro
 - GitHub: [@psielta](https://github.com/psielta)
 - LinkedIn: [Mateus Salgueiro](https://www.linkedin.com/in/mateus-salgueiro-525717205/)
 
