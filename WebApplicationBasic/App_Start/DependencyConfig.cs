@@ -39,6 +39,10 @@ namespace WebApplicationBasic.App_Start
             // Registrar controllers
             services.AddTransient<WebApplicationBasic.Controllers.HomeController>();
             services.AddTransient<WebApplicationBasic.Controllers.AuthController>();
+            services.AddTransient<WebApplicationBasic.Controllers.AccountController>();
+            services.AddTransient<WebApplicationBasic.Controllers.ProductsController>();
+            services.AddTransient<WebApplicationBasic.Controllers.CategoriesController>();
+            services.AddTransient<WebApplicationBasic.Controllers.ProductAttributesController>();
 
             _serviceProvider = services.BuildServiceProvider();
 

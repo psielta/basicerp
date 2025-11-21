@@ -1,65 +1,355 @@
-@{
-    ViewBag.Title = "Home Page";
+﻿@{
+    ViewBag.Title = "Dashboard";
 }
 
-<main>
-    <section class="row mb-4" aria-labelledby="aspnetTitle">
-        <h1 id="title">Basic - Sistema de Gestao</h1>
-        <p class="lead">Sistema multi-tenant com Entity Framework Core e PostgreSQL</p>
-    </section>
+<!-- Header de Boas-vindas -->
+<div class="row mb-3">
+    <div class="col-12">
+        <h2 class="mb-1">
+            Olá, @ViewBag.CurrentUserName
+        </h2>
+        @if (!string.IsNullOrEmpty(ViewBag.CurrentOrganizationName))
+        {
+            <p class="mb-0">
+                <i class="bi bi-building"></i>
+                <strong>@ViewBag.CurrentOrganizationName</strong>
+                @if (!string.IsNullOrEmpty(ViewBag.CurrentOrganizationRole))
+                {
+                    <span class="badge bg-primary">@ViewBag.CurrentOrganizationRole</span>
+                }
+            </p>
+        }
+        else
+        {
+            <div class="alert alert-warning mt-3">
+                <i class="bi bi-exclamation-triangle"></i>
+                Você não está em uma organização.
+                @Html.ActionLink("Selecione uma organização", "SelectOrganization", "Auth", null, new { @class = "alert-link" })
+                para acessar os recursos.
+            </div>
+        }
+    </div>
+</div>
 
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="alert alert-success" role="alert">
-                <h4 class="alert-heading">Entity Framework Core funcionando!</h4>
-                <hr>
-                <div class="row text-center">
-                    <div class="col-md-4">
-                        <h2 class="display-4">@ViewBag.TotalOrganizations</h2>
-                        <p class="text-muted">Organizations (tenants)</p>
-                    </div>
-                    <div class="col-md-4">
-                        <h2 class="display-4">@ViewBag.TotalUsers</h2>
-                        <p class="text-muted">Usuarios globais</p>
-                    </div>
-                    <div class="col-md-4">
-                        <h2 class="display-4">@ViewBag.TotalMemberships</h2>
-                        <p class="text-muted">Memberships ativos</p>
-                    </div>
+@if (!string.IsNullOrEmpty(ViewBag.CurrentOrganizationName))
+{
+    <!-- Cards de Estatísticas -->
+    <div class="row mb-3">
+        <!-- Produtos -->
+        <div class="col-md-3 col-sm-6 mb-2">
+            <div class="card border-primary h-100">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-box-seam text-primary" style="font-size: 1.8rem;"></i>
+                    <h4 class="mt-1 mb-0">@(ViewBag.TotalProducts ?? 0)</h4>
+                    <small class="text-muted">Produtos</small><br />
+                    <small class="text-success">@(ViewBag.ActiveProducts ?? 0) ativos</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Variantes -->
+        <div class="col-md-3 col-sm-6 mb-2">
+            <div class="card border-info h-100">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-grid-3x3 text-info" style="font-size: 1.8rem;"></i>
+                    <h4 class="mt-1 mb-0">@(ViewBag.TotalVariants ?? 0)</h4>
+                    <small class="text-muted">SKUs</small><br />
+                    <small class="text-success">@(ViewBag.ActiveVariants ?? 0) ativos</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Categorias -->
+        <div class="col-md-3 col-sm-6 mb-2">
+            <div class="card border-success h-100">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-tags text-success" style="font-size: 1.8rem;"></i>
+                    <h4 class="mt-1 mb-0">@(ViewBag.TotalCategories ?? 0)</h4>
+                    <small class="text-muted">Categorias</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Atributos -->
+        <div class="col-md-3 col-sm-6 mb-2">
+            <div class="card border-warning h-100">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-sliders text-warning" style="font-size: 1.8rem;"></i>
+                    <h4 class="mt-1 mb-0">@(ViewBag.TotalAttributes ?? 0)</h4>
+                    <small class="text-muted">Atributos</small><br />
+                    <small class="text-info">@(ViewBag.VariantAttributes ?? 0) variação</small>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <section class="col-md-4" aria-labelledby="dbTitle">
-            <h2 id="dbTitle">Banco de Dados</h2>
-            <p>PostgreSQL rodando no Docker na porta 5432</p>
-            <ul>
-                <li><strong>Database:</strong> basic_db</li>
-                <li><strong>Usuario:</strong> adm</li>
-                <li><strong>Tabelas:</strong> organization, "user", memberships, account, session</li>
-            </ul>
-        </section>
-        <section class="col-md-4" aria-labelledby="efTitle">
-            <h2 id="efTitle">Entity Framework</h2>
-            <p>EF Core 3.1.32 configurado com Npgsql provider</p>
-            <ul>
-                <li>Migrations prontas para criar extensoes uuid-ossp e citext</li>
-                <li>Injecao de dependencia configurada</li>
-                <li>DbContext disponivel nos controllers</li>
-            </ul>
-        </section>
-        <section class="col-md-4" aria-labelledby="modelsTitle">
-            <h2 id="modelsTitle">Modelos</h2>
-            <p>Estrutura multi-tenant pronta para SaaS</p>
-            <ul>
-                <li><strong>Organization:</strong> representa o tenant</li>
-                <li><strong>User:</strong> usuario global com role</li>
-                <li><strong>Membership:</strong> vinculo usuario x organization</li>
-                <li><strong>Account:</strong> credenciais/OAuth</li>
-                <li><strong>Session:</strong> sessoes com IP e user agent</li>
-            </ul>
-        </section>
+    <!-- Gráficos -->
+    <div class="row mb-3">
+        <!-- Gráfico: Produtos por Tipo -->
+        <div class="col-md-6 mb-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white py-2">
+                    <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Produtos por Tipo</h6>
+                </div>
+                <div class="card-body py-2">
+                    <canvas id="productTypeChart" height="180"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico: Status de Variantes -->
+        <div class="col-md-6 mb-2">
+            <div class="card">
+                <div class="card-header bg-info text-white py-2">
+                    <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Status de Variantes</h6>
+                </div>
+                <div class="card-body py-2">
+                    <canvas id="variantStatusChart" height="180"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
-</main>
+
+    <!-- Produtos Recentes -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white py-2">
+                    <h6 class="mb-0"><i class="bi bi-clock-history"></i> Produtos Recentes</h6>
+                </div>
+                <div class="card-body">
+                    @{
+                        var recentProducts = ViewBag.RecentProducts as List<WebApplicationBasic.Controllers.RecentProductViewModel>;
+                        var hasProducts = recentProducts != null && recentProducts.Any();
+                    }
+                    @if (hasProducts)
+                    {
+                        <div class="list-group">
+                            @foreach (var product in recentProducts)
+                            {
+                                <div class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">@product.Name</h6>
+                                        <small>@product.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
+                                    </div>
+                                    <small class="text-muted">
+                                        @(product.VariantCount == 1 ?
+                                            "Produto Simples" :
+                                            $"Produto com Variações ({product.VariantCount} variantes)")
+                                    </small>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2">Nenhum produto cadastrado ainda</p>
+                            <a href="@Url.Action("SelectType", "Products")" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Cadastrar Primeiro Produto
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ações Rápidas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header py-2">
+                    <h6 class="mb-0"><i class="bi bi-lightning"></i> Ações Rápidas</h6>
+                </div>
+                <div class="card-body py-2">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="@Url.Action("SelectType", "Products")" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-plus-circle"></i> Novo Produto
+                        </a>
+                        <a href="@Url.Action("Create", "Categories")" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-plus-circle"></i> Nova Categoria
+                        </a>
+                        <a href="@Url.Action("Create", "ProductAttributes")" class="btn btn-sm btn-outline-warning">
+                            <i class="bi bi-plus-circle"></i> Novo Atributo
+                        </a>
+                        <a href="@Url.Action("Index", "Products")" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-list"></i> Ver Produtos
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Sem organização selecionada -->
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card border-warning">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-building text-warning" style="font-size: 4rem;"></i>
+                    <h3 class="mt-3">Selecione uma Organização</h3>
+                    <p class="text-muted">Para acessar o sistema, você precisa estar vinculado a uma organização.</p>
+                    <a href="@Url.Action("SelectOrganization", "Auth")" class="btn btn-warning btn-lg mt-3">
+                        <i class="bi bi-arrow-right-circle"></i> Selecionar Organização
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas Globais -->
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="bi bi-building text-primary" style="font-size: 2rem;"></i>
+                    <h4 class="mt-2">@ViewBag.TotalOrganizations</h4>
+                    <p class="text-muted mb-0">Organizações</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="bi bi-people text-info" style="font-size: 2rem;"></i>
+                    <h4 class="mt-2">@ViewBag.TotalUsers</h4>
+                    <p class="text-muted mb-0">Usuários</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="bi bi-link-45deg text-success" style="font-size: 2rem;"></i>
+                    <h4 class="mt-2">@ViewBag.TotalMemberships</h4>
+                    <p class="text-muted mb-0">Vínculos Ativos</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @if (!string.IsNullOrEmpty(ViewBag.CurrentOrganizationName))
+    {
+        <!-- Chart.js -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+        <script>
+            $(document).ready(function () {
+                // Gráfico de Produtos por Tipo
+                var ctxType = document.getElementById('productTypeChart').getContext('2d');
+                var simpleCount = @(ViewBag.SimpleProducts ?? 0);
+                var configurableCount = @(ViewBag.ConfigurableProducts ?? 0);
+
+                new Chart(ctxType, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Produtos Simples', 'Produtos com Variações'],
+                        datasets: [{
+                            data: [simpleCount, configurableCount],
+                            backgroundColor: [
+                                'rgba(13, 110, 253, 0.8)',
+                                'rgba(13, 202, 240, 0.8)'
+                            ],
+                            borderColor: [
+                                'rgba(13, 110, 253, 1)',
+                                'rgba(13, 202, 240, 1)'
+                            ],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        var label = context.label || '';
+                                        var value = context.parsed;
+                                        var total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        return label + ': ' + value + ' (' + percentage + '%)';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Gráfico de Status de Variantes
+                var ctxStatus = document.getElementById('variantStatusChart').getContext('2d');
+                var activeVariants = @(ViewBag.ActiveVariants ?? 0);
+                var inactiveVariants = @((ViewBag.TotalVariants ?? 0) - (ViewBag.ActiveVariants ?? 0));
+
+                new Chart(ctxStatus, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Variantes Ativas', 'Variantes Inativas'],
+                        datasets: [{
+                            label: 'Quantidade',
+                            data: [activeVariants, inactiveVariants],
+                            backgroundColor: [
+                                'rgba(25, 135, 84, 0.8)',
+                                'rgba(108, 117, 125, 0.8)'
+                            ],
+                            borderColor: [
+                                'rgba(25, 135, 84, 1)',
+                                'rgba(108, 117, 125, 1)'
+                            ],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            });
+        </script>
+    }
+}
+
+<style>
+    .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-footer {
+        border-top: 1px solid rgba(0, 0, 0, 0.125);
+    }
+
+    .list-group-item {
+        transition: background-color 0.2s;
+    }
+
+    .list-group-item:hover {
+        background-color: #f8f9fa;
+    }
+</style>

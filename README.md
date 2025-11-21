@@ -181,6 +181,30 @@ Para instruções mais detalhadas, consulte o arquivo [AUTHENTICATION_TEST.md](A
 - `ip_address` (inet) e `user_agent`
 - `user_id` (obrigatorio) e `active_organization_id` (nullable, `ON DELETE SET NULL`)
 
+### Produtos (SPU/SKU)
+
+**ProductTemplate** (SPU - Standard Product Unit):
+- Produto "pai" com informações gerais
+- `name`, `slug`, `brand`, `description`
+- Flags: `is_service`, `is_rental`, `has_delivery`
+- Fiscais: `ncm`, `nbs`, `warranty_months`
+- Relacionamentos: variantes, categorias, atributos descritivos
+
+**ProductVariant** (SKU - Stock Keeping Unit):
+- Variação específica do produto
+- `sku` único por organização
+- Dimensões: `weight`, `height`, `width`, `length`
+- `cost`, `barcode`, `is_active`
+- Relacionamentos: atributos de variação
+
+**ProductAttribute**:
+- Define tipos de atributos (Cor, Tamanho, Material, etc.)
+- `is_variant`: `true` para atributos de variação, `false` para descritivos
+
+**Category**:
+- Hierarquia de categorias com `parent_id`
+- `path` para navegação breadcrumb
+
 ## Comandos Uteis
 
 ### Docker
@@ -261,35 +285,49 @@ SELECT * FROM session;
     - [x] Validação de tipos de arquivo (jpg, png)
     - [x] Redimensionamento e otimização de imagens (max 800x800, 85% qualidade)
 
+  - [x] **Sistema de Produtos Completo (SPU/SKU)**
+    - [x] Cadastro de produtos simples e com variações
+    - [x] Wizard de criação com 5 passos
+    - [x] Wizard de edição completo
+    - [x] Categorias hierárquicas
+    - [x] Sistema de atributos (variação + descritivos)
+    - [x] Geração automática de variantes (produto cartesiano)
+    - [x] Gerenciamento individual de variantes
+    - [x] Soft deletes e auditoria completa
+  - [x] **Dashboard Executivo**
+    - [x] Cards de estatísticas por organização
+    - [x] Gráficos Chart.js (produtos por tipo, status de variantes)
+    - [x] Lista de produtos recentes
+    - [x] Ações rápidas
+
 ### Em Desenvolvimento
 
-- [ ] **Gestao de Usuarios**
-  - CRUD completo de usuarios
-  - Definicao de roles
-  - Associacao usuario-organization via memberships
+- [ ] **Gestão de Usuários**
+  - CRUD completo de usuários
+  - Definição de roles
+  - Associação usuário-organization via memberships
 
 - [ ] **Camada de Clientes**
   - CRUD de clientes por organization
-  - Validacao de CPF/CNPJ
-  - Busca, filtros e paginacao
+  - Validação de CPF/CNPJ
+  - Busca, filtros e paginação
 
-- [ ] **Cadastro de Produtos**
-  - CRUD de produtos
-  - Estoque e categorias
-  - Precos e descontos
+- [ ] **Preços e Estoque**
+  - Tabela de preços por variante
+  - Controle de estoque por SKU
+  - Histórico de movimentações
 
 - [ ] **Sistema de Vendas**
   - Pedidos/vendas e itens
-  - Calculo de totais
-  - Historico por cliente e relatórios basicos
+  - Cálculo de totais
+  - Histórico por cliente e relatórios básicos
 
 ### Futuro
 
-- [ ] Dashboard com graficos
-- [ ] Relatorios (PDF/Excel)
-- [ ] API REST para integracao
-- [ ] Migracao para .NET 8
-- [ ] Testes unitarios/integrados
+- [ ] Relatórios (PDF/Excel)
+- [ ] API REST para integração
+- [ ] Migração para .NET 8
+- [ ] Testes unitários/integrados
 - [ ] CI/CD com GitHub Actions
 
 ## Notas Tecnicas

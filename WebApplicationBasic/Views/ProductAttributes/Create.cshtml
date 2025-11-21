@@ -1,0 +1,93 @@
+﻿@model WebApplicationBasic.Models.ViewModels.ProductAttributeFormViewModel
+
+@{
+    ViewBag.Title = "Novo Atributo";
+}
+
+<h2>Novo Atributo</h2>
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+
+    <div class="form-horizontal">
+        <div class="row mb-3">
+            @Html.LabelFor(m => m.Name, new { @class = "control-label col-md-2" })
+            <div class="col-md-6">
+                @Html.TextBoxFor(m => m.Name, new { @class = "form-control" })
+                <p class="form-text text-muted">Ex.: "Cor", "Tamanho", "Material".</p>
+                @Html.ValidationMessageFor(m => m.Name, "", new { @class = "text-danger" })
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="offset-md-2 col-md-6">
+                <div class="form-check">
+                    @Html.CheckBoxFor(m => m.IsVariant, new { @class = "form-check-input" })
+                    <label class="form-check-label">
+                        Usar este atributo em variações (SKU)
+                    </label>
+                    <p class="form-text text-muted">
+                        Marque quando o atributo fizer parte das variações do produto, ex.: "Cor", "Tamanho".
+                        Atributos descritivos (ex.: "Material") podem ficar desmarcados.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <hr />
+        <h4 class="offset-md-2">Valores</h4>
+
+        <div class="row mb-3">
+            <div class="offset-md-2 col-md-8">
+                <table class="table table-bordered" id="attribute-values-table">
+                    <thead>
+                        <tr>
+                            <th>Valor</th>
+                            <th style="width: 120px;">Ordem</th>
+                            <th style="width: 80px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Values.Count; i++)
+                        {
+                            <tr>
+                                <td>
+                                    @Html.HiddenFor(m => m.Values[i].Id)
+                                    @Html.TextBoxFor(m => m.Values[i].Value, new { @class = "form-control" })
+                                    @Html.ValidationMessageFor(m => m.Values[i].Value, "", new { @class = "text-danger" })
+                                </td>
+                                <td>
+                                    @Html.TextBoxFor(m => m.Values[i].SortOrder, new { @class = "form-control", type = "number" })
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-link text-danger" onclick="removeAttributeRow(this)">Remover</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <button type="submit" name="addValue" value="1" class="btn btn-secondary">Adicionar valor</button>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="offset-md-2 col-md-6">
+                <button type="submit" class="btn btn-primary">Salvar</button>
+                @Html.ActionLink("Voltar", "Index", null, new { @class = "btn btn-secondary" })
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+    <script type="text/javascript">
+        function removeAttributeRow(button) {
+            var row = button.closest("tr");
+            if (row) {
+                row.parentNode.removeChild(row);
+            }
+        }
+    </script>
+}

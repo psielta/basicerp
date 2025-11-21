@@ -1,0 +1,151 @@
+﻿@model WebApplicationBasic.Models.ViewModels.ProductTypeSelectionViewModel
+
+@{
+    ViewBag.Title = "Novo Produto - Selecionar Tipo";
+}
+
+<h2>Novo Produto</h2>
+<h3>Passo 1: Selecione o tipo de produto</h3>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        @using (Html.BeginForm("CreateWizard", "Products", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+
+            <div class="p-3 bg-light rounded">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card product-type-option">
+                            <div class="card-body text-center">
+                                <label style="cursor: pointer; display: block; padding: 20px;">
+                                    @Html.RadioButtonFor(m => m.ProductType, WebApplicationBasic.Models.ViewModels.ProductType.Simple, new { id = "simple", @class = "product-type-radio form-check-input" })
+                                    <h4 style="margin-top: 10px;">
+                                        <i class="bi bi-file-earmark"></i> Produto Simples
+                                    </h4>
+                                    <p class="text-muted" style="margin-top: 15px;">
+                                        Produto com apenas uma configuração<br />
+                                        <small>Exemplos: Livro, Serviço, Produto único</small>
+                                    </p>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card product-type-option">
+                            <div class="card-body text-center">
+                                <label style="cursor: pointer; display: block; padding: 20px;">
+                                    @Html.RadioButtonFor(m => m.ProductType, WebApplicationBasic.Models.ViewModels.ProductType.Configurable, new { id = "configurable", @class = "product-type-radio form-check-input" })
+                                    <h4 style="margin-top: 10px;">
+                                        <i class="bi bi-grid-3x3"></i> Produto com Variações
+                                    </h4>
+                                    <p class="text-muted" style="margin-top: 15px;">
+                                        Produto com múltiplas opções<br />
+                                        <small>Exemplos: Camiseta (cores/tamanhos), Calçados</small>
+                                    </p>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @Html.ValidationMessageFor(m => m.ProductType, "", new { @class = "text-danger text-center" })
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card border-info" id="type-description" style="display: none;">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">O que isso significa?</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="simple-description" style="display: none;">
+                                <h4>Produto Simples</h4>
+                                <p>Um produto simples possui apenas uma configuração (SKU único). É ideal para:</p>
+                                <ul>
+                                    <li>Produtos que não possuem variações de cor, tamanho ou outras características</li>
+                                    <li>Livros, e-books, downloads digitais</li>
+                                    <li>Serviços ou produtos de aluguel</li>
+                                    <li>Produtos personalizados ou únicos</li>
+                                </ul>
+                                <p><strong>Exemplo:</strong> "Livro Clean Code" - apenas uma versão disponível</p>
+                            </div>
+                            <div id="configurable-description" style="display: none;">
+                                <h4>Produto com Variações</h4>
+                                <p>Um produto configurável permite múltiplas variações (vários SKUs) baseadas em atributos. É ideal para:</p>
+                                <ul>
+                                    <li>Roupas com diferentes cores e tamanhos</li>
+                                    <li>Calçados com diferentes numerações</li>
+                                    <li>Produtos eletrônicos com diferentes capacidades ou voltagens</li>
+                                    <li>Qualquer produto que varie em características específicas</li>
+                                </ul>
+                                <p><strong>Exemplo:</strong> "Camiseta Básica" disponível em:</p>
+                                <ul>
+                                    <li>Cores: Branca, Preta, Azul</li>
+                                    <li>Tamanhos: P, M, G, GG</li>
+                                    <li>Total: 12 variações (SKUs) diferentes</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <button type="submit" class="btn btn-primary btn-lg" id="continue-btn" disabled>
+                    Continuar <i class="bi bi-chevron-right"></i>
+                </button>
+                @Html.ActionLink("Cancelar", "Index", null, new { @class = "btn btn-secondary btn-lg" })
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Highlight selected card
+            $('.product-type-radio').change(function () {
+                $('.product-type-option').removeClass('border-primary').addClass('border-secondary');
+                $(this).closest('.product-type-option').removeClass('border-secondary').addClass('border-primary');
+
+                // Enable continue button
+                $('#continue-btn').prop('disabled', false);
+
+                // Show description
+                $('#type-description').show();
+                if ($(this).attr('id') === 'simple') {
+                    $('#simple-description').show();
+                    $('#configurable-description').hide();
+                } else {
+                    $('#simple-description').hide();
+                    $('#configurable-description').show();
+                }
+            });
+
+            // Click on card to select
+            $('.product-type-option').click(function () {
+                $(this).find('.product-type-radio').prop('checked', true).trigger('change');
+            });
+        });
+    </script>
+
+    <style>
+        .product-type-option {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-width: 2px;
+        }
+        .product-type-option:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        .product-type-option.border-primary {
+            border-color: #0d6efd !important;
+        }
+        .product-type-radio {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+}

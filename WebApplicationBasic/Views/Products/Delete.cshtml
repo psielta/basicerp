@@ -1,0 +1,44 @@
+﻿@model WebApplicationBasic.Models.ViewModels.ProductListItemViewModel
+
+@{
+    ViewBag.Title = "Excluir Produto";
+}
+
+<h2>Excluir Produto</h2>
+
+<div class="alert alert-warning">
+    Tem certeza que deseja excluir o produto abaixo? Esta ação não poderá ser desfeita.
+</div>
+
+<dl class="dl-horizontal">
+    <dt>Nome</dt>
+    <dd>@Model.Name</dd>
+
+    <dt>SKU</dt>
+    <dd>@Model.Sku</dd>
+
+    <dt>Marca</dt>
+    <dd>@Model.Brand</dd>
+
+    <dt>Serviço</dt>
+    <dd>@(Model.IsService ? "Sim" : "Não")</dd>
+
+    <dt>Aluguel</dt>
+    <dd>@(Model.IsRental ? "Sim" : "Não")</dd>
+
+    <dt>Entrega</dt>
+    <dd>@(Model.HasDelivery ? "Sim" : "Não")</dd>
+
+    <dt>Ativo</dt>
+    <dd>@(Model.IsActive ? "Sim" : "Não")</dd>
+</dl>
+
+@using (Html.BeginForm("Delete", "Products", FormMethod.Post, new { @class = "form-inline" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.Id)
+
+    <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>
+    @Html.ActionLink("Cancelar", "Index", null, new { @class = "btn btn-secondary" })
+}
+

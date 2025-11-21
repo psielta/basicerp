@@ -1,0 +1,49 @@
+﻿@model WebApplicationBasic.Models.ViewModels.CategoryFormViewModel
+
+@{
+    ViewBag.Title = "Editar Categoria";
+}
+
+<h2>Editar Categoria</h2>
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.Id)
+
+    <div class="form-horizontal">
+        <div class="row mb-3">
+            @Html.LabelFor(m => m.Name, new { @class = "control-label col-md-2" })
+            <div class="col-md-6">
+                @Html.TextBoxFor(m => m.Name, new { @class = "form-control" })
+                <p class="form-text text-muted">Nome legível da categoria, por exemplo "Camisetas" ou "Serviços".</p>
+                @Html.ValidationMessageFor(m => m.Name, "", new { @class = "text-danger" })
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            @Html.LabelFor(m => m.ParentId, new { @class = "control-label col-md-2" })
+            <div class="col-md-6">
+                @Html.DropDownListFor(
+                    m => m.ParentId,
+                    new SelectList(Model.ParentOptions, "Id", "Path"),
+                    "-- Sem categoria pai --",
+                    new { @class = "form-control" }
+                )
+                @Html.ValidationMessageFor(m => m.ParentId, "", new { @class = "text-danger" })
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="offset-md-2 col-md-6">
+                <button type="submit" class="btn btn-primary">Salvar</button>
+                @Html.ActionLink("Voltar", "Index", null, new { @class = "btn btn-secondary" })
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
+

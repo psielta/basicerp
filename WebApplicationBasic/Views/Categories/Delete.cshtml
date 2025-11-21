@@ -1,0 +1,35 @@
+﻿@model WebApplicationBasic.Models.ViewModels.CategoryListItemViewModel
+
+@{
+    ViewBag.Title = "Excluir Categoria";
+}
+
+<h2>Excluir Categoria</h2>
+
+<div class="alert alert-warning">
+    Tem certeza que deseja excluir a categoria abaixo? Filhos terão o vínculo removido e produtos deixarão de estar associados a esta categoria.
+</div>
+
+<dl class="dl-horizontal">
+    <dt>Nome</dt>
+    <dd>@Model.Name</dd>
+
+    <dt>Slug</dt>
+    <dd>@Model.Slug</dd>
+
+    <dt>Caminho</dt>
+    <dd>@Model.Path</dd>
+
+    <dt>Categoria Pai</dt>
+    <dd>@Model.ParentName</dd>
+</dl>
+
+@using (Html.BeginForm("Delete", "Categories", FormMethod.Post, new { @class = "form-inline" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.Id)
+
+    <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>
+    @Html.ActionLink("Cancelar", "Index", null, new { @class = "btn btn-secondary" })
+}
+

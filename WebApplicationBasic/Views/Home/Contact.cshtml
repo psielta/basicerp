@@ -1,19 +1,46 @@
 ﻿@{
-    ViewBag.Title = "Contact";
+    ViewBag.Title = "Contato";
 }
-<main aria-labelledby="title">
-    <h2 id="title">@ViewBag.Title.</h2>
-    <h3>@ViewBag.Message</h3>
 
-    <address>
-        One Microsoft Way<br />
-        Redmond, WA 98052-6399<br />
-        <abbr title="Phone">P:</abbr>
-        425.555.0100
-    </address>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-7">
+            <h2>Precisa falar com a equipe?</h2>
+            <p>
+                Este projeto resume todo o que está documentado no README: ambiente com Docker Compose,
+                migrations via <code>Update-Database</code>, autenticação OTP e catálogo multi-tenant completo.
+                Se você estiver configurando o Basic ERP, use os canais abaixo para tirar dúvidas ou reportar problemas.
+            </p>
 
-    <address>
-        <strong>Support:</strong>   <a href="mailto:Support@example.com">Support@example.com</a><br />
-        <strong>Marketing:</strong> <a href="mailto:Marketing@example.com">Marketing@example.com</a>
-    </address>
-</main>
+            <h3>Checklist rápido</h3>
+            <ul>
+                <li>Banco PostgreSQL (Docker) rodando em <code>localhost:5432</code>.</li>
+                <li>Conexão padrão: <code>basic_db</code> / usuário <code>adm</code>.</li>
+                <li>Migrations do projeto <code>EntityFrameworkProject</code> aplicadas.</li>
+                <li>Organizações e usuários criados via fluxo de autenticação.</li>
+            </ul>
+        </div>
+        <div class="col-lg-5">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    Contato principal
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>Email:</strong> suporte@basicerp.com</p>
+                    <p class="mb-1"><strong>Slack:</strong> #basic-erp</p>
+                    <p class="mb-0"><strong>PgAdmin:</strong> http://localhost:5050 (admin@basicerp.com / admin)</p>
+                </div>
+            </div>
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    FAQ rápido
+                </div>
+                <div class="card-body">
+                    <p><strong>Como rodar local?</strong> Restaurar pacotes, subir Docker, executar as migrations.</p>
+                    <p><strong>Suporte ao multi-tenant?</strong> Cada entidade possui <code>OrganizationId</code> e os controllers usam <code>CurrentOrganizationId</code>.</p>
+                    <p><strong>Posso criar atributos/categorias?</strong> Sim, utilize os menus “Atributos” e “Categorias” com as telas recém-implementadas.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

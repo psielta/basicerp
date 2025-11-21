@@ -1,0 +1,601 @@
+﻿@model WebApplicationBasic.Models.ViewModels.ProductFormViewModel
+
+@{
+    ViewBag.Title = "Editar Produto - " + Model.Name;
+    var productTypeDisplay = Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple ?
+        "Produto Simples" : "Produto com Variações";
+}
+
+<h2>Editar Produto</h2>
+<p class="text-muted">
+    Tipo: <strong>@productTypeDisplay</strong> |
+    Slug: <strong>@Model.Slug</strong>
+</p>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger">
+        <h4>Erros de Validação:</h4>
+        @Html.ValidationSummary(false, "", new { @class = "text-danger" })
+    </div>
+}
+
+@using (Html.BeginForm("UpdateProduct", "Products", FormMethod.Post, new { id = "editProductForm" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.Id)
+    @Html.HiddenFor(m => m.ProductType)
+
+    <div class="wizard-container">
+        <!-- Progress Bar -->
+        <div class="row">
+            <div class="col-md-12">
+                <ul class="nav nav-pills nav-justified" id="wizardTabs">
+                    <li class="active">
+                        <a href="#step1" data-toggle="tab">
+                            <span class="badge">1</span> Informações Básicas
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#step2" data-toggle="tab">
+                            <span class="badge">2</span> Categorias
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#step3" data-toggle="tab">
+                            <span class="badge">3</span> Atributos
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#step4" data-toggle="tab">
+                            <span class="badge">4</span>
+                            @if (Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple)
+                            {
+                                <text>SKU e Detalhes</text>
+                            }
+                            else
+                            {
+                                <text>Variações</text>
+                            }
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#step5" data-toggle="tab">
+                            <span class="badge">5</span> Revisão
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <hr />
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Step 1: Informações Básicas -->
+            <div class="tab-pane active" id="step1">
+                <h3>Informações Básicas do Produto</h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            @Html.LabelFor(m => m.Name)
+                            @Html.TextBoxFor(m => m.Name, new { @class = "form-control" })
+                            @Html.ValidationMessageFor(m => m.Name, "", new { @class = "text-danger" })
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            @Html.LabelFor(m => m.Brand)
+                            @Html.TextBoxFor(m => m.Brand, new { @class = "form-control" })
+                            @Html.ValidationMessageFor(m => m.Brand, "", new { @class = "text-danger" })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    @Html.LabelFor(m => m.Description)
+                    @Html.TextAreaFor(m => m.Description, new { @class = "form-control", rows = 4 })
+                    @Html.ValidationMessageFor(m => m.Description, "", new { @class = "text-danger" })
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            @Html.LabelFor(m => m.WarrantyMonths)
+                            @Html.TextBoxFor(m => m.WarrantyMonths, new { @class = "form-control", type = "number", min = "0" })
+                            @Html.ValidationMessageFor(m => m.WarrantyMonths, "", new { @class = "text-danger" })
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            @Html.CheckBoxFor(m => m.IsService, new { @class = "form-check-input" })
+                            <label class="form-check-label">
+                                @Html.DisplayNameFor(m => m.IsService)
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            @Html.CheckBoxFor(m => m.IsRental, new { @class = "form-check-input" })
+                            <label class="form-check-label">
+                                @Html.DisplayNameFor(m => m.IsRental)
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            @Html.CheckBoxFor(m => m.HasDelivery, new { @class = "form-check-input" })
+                            <label class="form-check-label">
+                                @Html.DisplayNameFor(m => m.HasDelivery)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            @Html.LabelFor(m => m.Ncm)
+                            @Html.TextBoxFor(m => m.Ncm, new { @class = "form-control" })
+                            @Html.ValidationMessageFor(m => m.Ncm, "", new { @class = "text-danger" })
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            @Html.LabelFor(m => m.Nbs)
+                            @Html.TextBoxFor(m => m.Nbs, new { @class = "form-control" })
+                            @Html.ValidationMessageFor(m => m.Nbs, "", new { @class = "text-danger" })
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Categorias -->
+            <div class="tab-pane" id="step2">
+                <h3>Categorias do Produto</h3>
+                <p class="text-muted">Selecione uma ou mais categorias para classificar seu produto</p>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">Categorias Disponíveis</div>
+                            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                                <div id="category-tree">
+                                    @if (Model.AvailableCategories != null && Model.AvailableCategories.Any())
+                                    {
+                                        foreach (var category in Model.AvailableCategories.Where(c => c.ParentId == null))
+                                        {
+                                            <div class="category-item" data-id="@category.Id">
+                                                <label>
+                                                    <input type="checkbox" name="SelectedCategoryIds" value="@category.Id"
+                                                           @(Model.SelectedCategoryIds.Contains(category.Id) ? "checked" : "") />
+                                                    @category.Name
+                                                </label>
+                                                @RenderSubCategories(Model.AvailableCategories, category.Id)
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted">Nenhuma categoria disponível.</p>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-info">
+                            <div class="card-header">Categorias Selecionadas</div>
+                            <div class="card-body">
+                                <div id="selected-categories">
+                                    @if (Model.SelectedCategoryIds != null && Model.SelectedCategoryIds.Any())
+                                    {
+                                        var selectedCats = Model.AvailableCategories.Where(c => Model.SelectedCategoryIds.Contains(c.Id)).ToList();
+                                        if (selectedCats.Any())
+                                        {
+                                            <ul>
+                                                @foreach (var cat in selectedCats)
+                                                {
+                                                    <li>@cat.Name</li>
+                                                }
+                                            </ul>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">Nenhuma categoria selecionada</p>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted">Nenhuma categoria selecionada</p>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Atributos -->
+            <div class="tab-pane" id="step3">
+                @if (Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple)
+                {
+                    <!-- Apenas atributos descritivos para produtos simples -->
+                    <h3>Atributos Descritivos</h3>
+                    <p class="text-muted">Adicione informações adicionais sobre o produto</p>
+
+                    <div id="descriptive-attributes">
+                        @if (Model.DescriptiveAttributes != null && Model.DescriptiveAttributes.Any())
+                        {
+                            for (int i = 0; i < Model.DescriptiveAttributes.Count; i++)
+                            {
+                                var attr = Model.DescriptiveAttributes[i];
+                                <div class="card">
+                                    <div class="card-header">@attr.AttributeName</div>
+                                    <div class="card-body">
+                                        @Html.HiddenFor(m => m.DescriptiveAttributes[i].AttributeId)
+                                        @Html.HiddenFor(m => m.DescriptiveAttributes[i].AttributeName)
+                                        @Html.HiddenFor(m => m.DescriptiveAttributes[i].AttributeCode)
+                                        @foreach (var value in attr.AvailableValues)
+                                        {
+                                            <label class="form-check form-check-inline">
+                                                <input type="checkbox"
+                                                       class="form-check-input"
+                                                       name="DescriptiveAttributes[@i].SelectedValueIds"
+                                                       value="@value.Id"
+                                                       @(value.IsSelected || attr.SelectedValueIds.Contains(value.Id) ? "checked" : "") />
+                                                <span class="form-check-label">@value.Value</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="alert alert-info">
+                                Nenhum atributo descritivo disponível.
+                                @Html.ActionLink("Cadastrar atributos", "Index", "ProductAttributes")
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <!-- Atributos de variação para produtos configuráveis -->
+                    <h3>Atributos de Variação</h3>
+                    <div class="alert alert-warning">
+                        <strong>Atenção:</strong> Modificar atributos de variação pode afetar as variantes existentes.
+                        Para adicionar novas variações, use o botão "Gerar Novas Variações" na próxima aba.
+                    </div>
+
+                    <div id="variant-attributes">
+                        @if (Model.VariantAttributes != null && Model.VariantAttributes.Any())
+                        {
+                            for (int i = 0; i < Model.VariantAttributes.Count; i++)
+                            {
+                                var attr = Model.VariantAttributes[i];
+                                <div class="card variant-attribute-panel @(attr.IsUsedForVariants ? "active" : "")"
+                                     data-attribute-id="@attr.AttributeId">
+                                    <div class="card-header">
+                                        <label>
+                                            <input type="checkbox"
+                                                   class="form-check-input attribute-toggle"
+                                                   data-attribute-id="@attr.AttributeId"
+                                                   @(attr.IsUsedForVariants ? "checked disabled" : "") />
+                                            <strong>@attr.AttributeName</strong>
+                                            @if (attr.IsUsedForVariants)
+                                            {
+                                                <span class="badge bg-info">Em uso</span>
+                                            }
+                                        </label>
+                                    </div>
+                                    <div class="card-body attribute-values" style="@(attr.IsUsedForVariants ? "" : "display: none;")">
+                                        @Html.HiddenFor(m => m.VariantAttributes[i].AttributeId)
+                                        @Html.HiddenFor(m => m.VariantAttributes[i].AttributeName)
+                                        @Html.HiddenFor(m => m.VariantAttributes[i].AttributeCode)
+                                        @foreach (var value in attr.SelectedValues)
+                                        {
+                                            <label class="form-check form-check-inline">
+                                                <input type="checkbox"
+                                                       class="form-check-input attribute-value-checkbox"
+                                                       name="VariantAttributes[@i].SelectedValues"
+                                                       value="@value.Id"
+                                                       data-attribute-id="@attr.AttributeId"
+                                                       data-attribute-name="@attr.AttributeName"
+                                                       data-value-name="@value.Value"
+                                                       @(value.IsSelected ? "checked disabled" : "") />
+                                                <span class="form-check-label">@value.Value</span>
+                                                @if (value.IsSelected)
+                                                {
+                                                    <span class="badge bg-success">Em uso</span>
+                                                }
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    <hr />
+
+                    <h4>Atributos Descritivos (opcional)</h4>
+                    <p class="text-muted">Informações adicionais que se aplicam a todas as variações</p>
+                    <div id="descriptive-attributes-configurable">
+                        @if (Model.DescriptiveAttributes != null && Model.DescriptiveAttributes.Any())
+                        {
+                            for (int i = 0; i < Model.DescriptiveAttributes.Count; i++)
+                            {
+                                var attr = Model.DescriptiveAttributes[i];
+                                <div class="card">
+                                    <div class="card-header">@attr.AttributeName</div>
+                                    <div class="card-body">
+                                        @Html.HiddenFor(m => m.DescriptiveAttributes[i].AttributeId)
+                                        @Html.HiddenFor(m => m.DescriptiveAttributes[i].AttributeName)
+                                        @Html.HiddenFor(m => m.DescriptiveAttributes[i].AttributeCode)
+                                        @foreach (var value in attr.AvailableValues)
+                                        {
+                                            <label class="form-check form-check-inline">
+                                                <input type="checkbox"
+                                                       class="form-check-input"
+                                                       name="DescriptiveAttributes[@i].SelectedValueIds"
+                                                       value="@value.Id"
+                                                       @(value.IsSelected || attr.SelectedValueIds.Contains(value.Id) ? "checked" : "") />
+                                                <span class="form-check-label">@value.Value</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Step 4: SKU/Variações -->
+            <div class="tab-pane" id="step4">
+                @if (Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple)
+                {
+                    <!-- Produto Simples - Um SKU -->
+                    <h3>Detalhes do SKU</h3>
+                    @Html.HiddenFor(m => m.VariantId)
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Sku)
+                                @Html.TextBoxFor(m => m.Sku, new { @class = "form-control" })
+                                @Html.ValidationMessageFor(m => m.Sku, "", new { @class = "text-danger" })
+                            </div>
+
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Barcode)
+                                @Html.TextBoxFor(m => m.Barcode, new { @class = "form-control" })
+                                @Html.ValidationMessageFor(m => m.Barcode, "", new { @class = "text-danger" })
+                            </div>
+
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Cost)
+                                @Html.TextBoxFor(m => m.Cost, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                                @Html.ValidationMessageFor(m => m.Cost, "", new { @class = "text-danger" })
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h4>Dimensões e Peso</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        @Html.LabelFor(m => m.Weight)
+                                        @Html.TextBoxFor(m => m.Weight, new { @class = "form-control", type = "number", step = "0.001", min = "0" })
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        @Html.LabelFor(m => m.Height)
+                                        @Html.TextBoxFor(m => m.Height, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        @Html.LabelFor(m => m.Width)
+                                        @Html.TextBoxFor(m => m.Width, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        @Html.LabelFor(m => m.Length)
+                                        @Html.TextBoxFor(m => m.Length, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-check">
+                        @Html.CheckBoxFor(m => m.IsActive, new { @class = "form-check-input" })
+                        <label class="form-check-label">
+                            @Html.DisplayNameFor(m => m.IsActive)
+                        </label>
+                    </div>
+                }
+                else
+                {
+                    <!-- Produto Configurável - Múltiplos SKUs -->
+                    <h3>Variações do Produto</h3>
+
+                    <div class="p-3 bg-light rounded">
+                        <p><strong>Variações Existentes:</strong> @(Model.Variants?.Count ?? 0)</p>
+                        <button type="button" class="btn btn-primary" id="generate-new-variants">
+                            <i class="bi bi-plus"></i> Gerar Novas Variações
+                        </button>
+                        @Html.ActionLink("Gerenciar Variantes Detalhadamente", "ManageVariants",
+                            new { id = Model.Id }, new { @class = "btn btn-info", target = "_blank" })
+                    </div>
+
+                    <div id="existing-variants">
+                        @if (Model.Variants != null && Model.Variants.Any())
+                        {
+                            <h4>Variantes Atuais</h4>
+                            <table class="table table-striped table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>SKU</th>
+                                        <th>Atributos</th>
+                                        <th>Custo</th>
+                                        <th>Peso</th>
+                                        <th>Código de Barras</th>
+                                        <th>Ativo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (int i = 0; i < Model.Variants.Count; i++)
+                                    {
+                                        var variant = Model.Variants[i];
+                                        <tr>
+                                            <td>
+                                                @Html.HiddenFor(m => m.Variants[i].Id)
+                                                @Html.TextBoxFor(m => m.Variants[i].Sku, new { @class = "form-control input-sm" })
+                                            </td>
+                                            <td>
+                                                @variant.VariantDescription
+                                                @foreach (var kvp in variant.VariantAttributeValues)
+                                                {
+                                                    @Html.HiddenFor(m => m.Variants[i].VariantAttributeValues[kvp.Key], new { Value = kvp.Value })
+                                                }
+                                            </td>
+                                            <td>
+                                                @Html.TextBoxFor(m => m.Variants[i].Cost, new { @class = "form-control input-sm", type = "number", step = "0.01", min = "0" })
+                                            </td>
+                                            <td>
+                                                @Html.TextBoxFor(m => m.Variants[i].Weight, new { @class = "form-control input-sm", type = "number", step = "0.001", min = "0" })
+                                            </td>
+                                            <td>
+                                                @Html.TextBoxFor(m => m.Variants[i].Barcode, new { @class = "form-control input-sm" })
+                                            </td>
+                                            <td>
+                                                @Html.CheckBoxFor(m => m.Variants[i].IsActive)
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning">
+                                Este produto ainda não possui variantes. Use o botão "Gerar Novas Variações" para criar.
+                            </div>
+                        }
+                    </div>
+
+                    <div id="new-variants-container" style="display: none;">
+                        <hr />
+                        <h4>Novas Variações a Adicionar</h4>
+                        <div id="new-variants-table"></div>
+                    </div>
+                }
+            </div>
+
+            <!-- Step 5: Revisão -->
+            <div class="tab-pane" id="step5">
+                <h3>Revisão Final</h3>
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Resumo das Alterações</h5>
+                    </div>
+                    <div class="card-body" id="product-summary">
+                        <!-- Será preenchido via JavaScript -->
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <strong>Importante:</strong> Revise todas as alterações antes de salvar.
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <hr />
+        <div class="row">
+            <div class="col-md-12">
+                <button type="button" class="btn btn-secondary" id="prevBtn" style="display: none;">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                </button>
+                <button type="button" class="btn btn-primary float-end" id="nextBtn">
+                    Próximo <i class="bi bi-chevron-right"></i>
+                </button>
+                <button type="submit" class="btn btn-success float-end" id="submitBtn" style="display: none;">
+                    <i class="bi bi-check-circle"></i> Salvar Alterações
+                </button>
+                @Html.ActionLink("Cancelar", "Index", null, new { @class = "btn btn-link float-end" })
+            </div>
+        </div>
+    </div>
+}
+
+@helper RenderSubCategories(List<WebApplicationBasic.Models.ViewModels.CategorySelectionViewModel> categories, Guid parentId)
+{
+    var subCategories = categories.Where(c => c.ParentId == parentId);
+    if (subCategories.Any())
+    {
+        <div style="margin-left: 20px;">
+            @foreach (var subCategory in subCategories)
+            {
+                <div class="category-item" data-id="@subCategory.Id">
+                    <label>
+                        <input type="checkbox" name="SelectedCategoryIds" value="@subCategory.Id"
+                               @(Model.SelectedCategoryIds.Contains(subCategory.Id) ? "checked" : "") />
+                        @subCategory.Name
+                    </label>
+                    @RenderSubCategories(categories, subCategory.Id)
+                </div>
+            }
+        </div>
+    }
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+    <script src="~/Scripts/product-wizard-edit.js"></script>
+
+    <style>
+        .wizard-container {
+            min-height: 500px;
+        }
+
+        .nav-pills .nav-link {
+            border-radius: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .nav-pills .nav-link.active {
+            background-color: #337ab7;
+            color: white;
+        }
+
+        .nav-pills .completed .nav-link {
+            background-color: #5cb85c;
+            color: white;
+        }
+
+        .badge {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .category-item {
+            margin: 5px 0;
+        }
+
+        .variant-attribute-panel.active {
+            border-color: #337ab7;
+        }
+
+        .variant-attribute-panel.active .card-header {
+            background-color: #337ab7;
+            color: white;
+        }
+
+        .input-sm {
+            height: 28px;
+            padding: 2px 5px;
+            font-size: 12px;
+        }
+    </style>
+}

@@ -155,13 +155,13 @@
             border-bottom: 1px solid #dee2e6;
             padding: 15px 30px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            flex-shrink: 0; /* Não encolhe */
+            flex-shrink: 0; /* N�o encolhe */
         }
 
-        /* Content Container - FLEX GROW PARA OCUPAR ESPAÇO */
+        /* Content Container - FLEX GROW PARA OCUPAR ESPA�O */
         .content-wrapper {
             padding: 30px;
-            flex: 1 0 auto; /* Cresce para ocupar espaço disponível */
+            flex: 1 0 auto; /* Cresce para ocupar espa�o dispon�vel */
         }
 
         /* Footer - SEMPRE NO FINAL */
@@ -169,7 +169,7 @@
             padding: 20px 30px;
             border-top: 1px solid #dee2e6;
             background: #f8f9fa;
-            flex-shrink: 0; /* Não encolhe */
+            flex-shrink: 0; /* N�o encolhe */
             margin-top: auto; /* Empurra para o final */
         }
 
@@ -225,33 +225,27 @@
         </div>
         <ul class="sidebar-menu">
             <li>
-                <a href="@Url.Action("Index", "Home")" class="@(ViewContext.RouteData.Values["action"].ToString() == "Index" ? "active" : "")">
+                <a href="@Url.Action("Index", "Home")" class="@(ViewContext.RouteData.Values["controller"].ToString() == "Home" && ViewContext.RouteData.Values["action"].ToString() == "Index" ? "active" : "")">
                     <i class="bi bi-house-door"></i>
                     <span>Home</span>
                 </a>
             </li>
             <li>
-                <a href="@Url.Action("About", "Home")" class="@(ViewContext.RouteData.Values["action"].ToString() == "About" ? "active" : "")">
-                    <i class="bi bi-info-circle"></i>
-                    <span>About</span>
+                <a href="@Url.Action("Index", "Products")" class="@(ViewContext.RouteData.Values["controller"].ToString() == "Products" ? "active" : "")">
+                    <i class="bi bi-box-seam"></i>
+                    <span>Produtos</span>
                 </a>
             </li>
             <li>
-                <a href="@Url.Action("Contact", "Home")" class="@(ViewContext.RouteData.Values["action"].ToString() == "Contact" ? "active" : "")">
-                    <i class="bi bi-envelope"></i>
-                    <span>Contact</span>
+                <a href="@Url.Action("Index", "ProductAttributes")" class="@(ViewContext.RouteData.Values["controller"].ToString() == "ProductAttributes" ? "active" : "")">
+                    <i class="bi bi-sliders"></i>
+                    <span>Atributos</span>
                 </a>
             </li>
             <li>
-                <a href="#">
-                    <i class="bi bi-table"></i>
-                    <span>DataTables</span>
-                </a>
-            </li>
-            <li>
-                <a href="#">
-                    <i class="bi bi-gear"></i>
-                    <span>Settings</span>
+                <a href="@Url.Action("Index", "Categories")" class="@(ViewContext.RouteData.Values["controller"].ToString() == "Categories" ? "active" : "")">
+                    <i class="bi bi-tags"></i>
+                    <span>Categorias</span>
                 </a>
             </li>
         </ul>
@@ -311,8 +305,18 @@
                                     </a>
                                 </li>
                                 <li>
+                                    <a class="dropdown-item" href="@Url.Action("About", "Home")">
+                                        <i class="bi bi-info-circle"></i> Sobre o Basic ERP
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="@Url.Action("Contact", "Home")">
+                                        <i class="bi bi-chat-dots"></i> Contato
+                                    </a>
+                                </li>
+                                <li>
                                     <a class="dropdown-item" href="@Url.Action("SwitchOrganization", "Auth")">
-                                        <i class="bi bi-building"></i> Trocar Organização
+                                        <i class="bi bi-building"></i> Trocar Org.
                                     </a>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
@@ -345,7 +349,7 @@
         </footer>
     </main>
 
-    <!-- jQuery (necessário para algumas funcionalidades) -->
+    <!-- jQuery (necess�rio para algumas funcionalidades) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
     <!-- Bootstrap 5 Bundle (includes Popper) -->

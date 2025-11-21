@@ -1,9 +1,61 @@
 ﻿@{
-    ViewBag.Title = "About";
+    ViewBag.Title = "Sobre o Basic ERP";
 }
-<main aria-labelledby="title">
-    <h2 id="title">@ViewBag.Title.</h2>
-    <h3>@ViewBag.Message</h3>
 
-    <p>Use this area to provide additional information.</p>
+<main aria-labelledby="title" class="container mt-4">
+    <h2 id="title">@ViewBag.Title</h2>
+
+    <div class="row">
+        <div class="col-md-8">
+            <p>
+                O Basic ERP é um projeto completo inspirado no README do repositório. Ele mostra como montar um SaaS
+                multi-tenant com ASP.NET MVC 5 e Entity Framework Core 3.1,
+                usando PostgreSQL como banco principal e Docker Compose para facilitar o ambiente.
+            </p>
+
+            <h3>O que o projeto demonstra</h3>
+            <ul>
+                <li><strong>Multi-tenancy real</strong>: organizações, usuários globais e memberships por tenant.</li>
+                <li><strong>Catálogo profissional</strong>: products template/variant, categorias hierárquicas, atributos e valores.</li>
+                <li><strong>Autenticação moderna</strong>: fluxo OTP, seleção de organização e sessões persistentes.</li>
+                <li><strong>Stack atual</strong>: ASP.NET MVC 5, EF Core 3.1, Bootstrap 5.3, Microsoft DI, Npgsql.</li>
+            </ul>
+
+            <h3>Por que uma base SaaS?</h3>
+            <p>
+                A estrutura multi-tenant isolada permite evoluir o sistema para qualquer cenário B2B.
+                O README documenta desde o Docker Compose até o fluxo de migrations,
+                e os controllers demonstram como aplicar os conceitos a um caso real (cadastro de produtos, categorias, atributos, usuários).
+            </p>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    Stack rápido
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li>ASP.NET MVC 5 (.NET 4.7.2)</li>
+                        <li>Entity Framework Core 3.1 + Npgsql</li>
+                        <li>PostgreSQL 15 / Docker Compose</li>
+                        <li>Bootstrap 5.3 e Icons</li>
+                        <li>Microsoft.Extensions.DependencyInjection</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    Como testar
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li>Restaurar pacotes NuGet.</li>
+                        <li>Subir o Docker Compose (PostgreSQL + PgAdmin).</li>
+                        <li>Executar <code>Update-Database</code> no projeto de dados.</li>
+                        <li>Rodar o site e efetuar login na organização desejada.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
 </main>

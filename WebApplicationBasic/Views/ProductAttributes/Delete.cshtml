@@ -1,0 +1,35 @@
+﻿@model WebApplicationBasic.Models.ViewModels.ProductAttributeListItemViewModel
+
+@{
+    ViewBag.Title = "Excluir Atributo";
+}
+
+<h2>Excluir Atributo</h2>
+
+<div class="alert alert-warning">
+    Tem certeza que deseja excluir o atributo abaixo? Valores e vínculos com produtos/variações serão removidos.
+</div>
+
+<dl class="dl-horizontal">
+    <dt>Nome</dt>
+    <dd>@Model.Name</dd>
+
+    <dt>Código</dt>
+    <dd>@Model.Code</dd>
+
+    <dt>Tipo</dt>
+    <dd>@(Model.IsVariant ? "Variação (SKU)" : "Descritivo")</dd>
+
+    <dt>Qtd. Valores</dt>
+    <dd>@Model.ValuesCount</dd>
+</dl>
+
+@using (Html.BeginForm("Delete", "ProductAttributes", FormMethod.Post, new { @class = "form-inline" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.Id)
+
+    <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>
+    @Html.ActionLink("Cancelar", "Index", null, new { @class = "btn btn-secondary" })
+}
+

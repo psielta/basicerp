@@ -1,0 +1,178 @@
+﻿@model WebApplicationBasic.Models.ViewModels.VariantEditViewModel
+
+@{
+    ViewBag.Title = "Editar Variante";
+}
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h2>Editar Variante</h2>
+        <p class="text-muted">
+            Produto: <strong>@Model.ProductName</strong>
+        </p>
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="alert alert-danger">
+                @Html.ValidationSummary(false, "", new { @class = "mb-0" })
+            </div>
+        }
+
+        @using (Html.BeginForm("EditVariant", "Products", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            @Html.HiddenFor(m => m.Id)
+            @Html.HiddenFor(m => m.ProductTemplateId)
+            @Html.HiddenFor(m => m.ProductName)
+
+            <text>
+            <!-- Atributos de Variação (somente leitura) -->
+            </text>
+            if (Model.VariantAttributes != null && Model.VariantAttributes.Any())
+            {
+                <div class="card border-info mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-tag"></i> Atributos de Variação</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var attr in Model.VariantAttributes)
+                            {
+                                <span class="badge bg-primary fs-6">
+                                    @attr.Key: <strong>@attr.Value</strong>
+                                </span>
+                            }
+                        </div>
+                        <p class="text-muted mt-2 mb-0">
+                            <small>Os atributos de variação não podem ser alterados. Para mudar, crie uma nova variante.</small>
+                        </p>
+                    </div>
+                </div>
+            }
+
+            <!-- Dados da Variante -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-box"></i> Dados da Variante</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Sku)
+                                @Html.TextBoxFor(m => m.Sku, new { @class = "form-control" })
+                                @Html.ValidationMessageFor(m => m.Sku, "", new { @class = "text-danger" })
+                            </div>
+
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Name)
+                                @Html.TextBoxFor(m => m.Name, new { @class = "form-control", placeholder = "Opcional - se vazio, usa o nome do produto" })
+                                @Html.ValidationMessageFor(m => m.Name, "", new { @class = "text-danger" })
+                            </div>
+
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Description)
+                                @Html.TextAreaFor(m => m.Description, new { @class = "form-control", rows = 3, placeholder = "Opcional" })
+                                @Html.ValidationMessageFor(m => m.Description, "", new { @class = "text-danger" })
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Cost)
+                                <div class="input-group">
+                                    <span class="input-group-text">R$</span>
+                                    @Html.TextBoxFor(m => m.Cost, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                                </div>
+                                @Html.ValidationMessageFor(m => m.Cost, "", new { @class = "text-danger" })
+                            </div>
+
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Barcode)
+                                @Html.TextBoxFor(m => m.Barcode, new { @class = "form-control", placeholder = "EAN/GTIN" })
+                                @Html.ValidationMessageFor(m => m.Barcode, "", new { @class = "text-danger" })
+                            </div>
+
+                            <div class="form-check">
+                                @Html.CheckBoxFor(m => m.IsActive, new { @class = "form-check-input" })
+                                <label class="form-check-label">
+                                    @Html.DisplayNameFor(m => m.IsActive)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dimensões e Peso -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-rulers"></i> Dimensões e Peso</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Weight)
+                                <div class="input-group">
+                                    @Html.TextBoxFor(m => m.Weight, new { @class = "form-control", type = "number", step = "0.001", min = "0" })
+                                    <span class="input-group-text">kg</span>
+                                </div>
+                                @Html.ValidationMessageFor(m => m.Weight, "", new { @class = "text-danger" })
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Height)
+                                <div class="input-group">
+                                    @Html.TextBoxFor(m => m.Height, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                                    <span class="input-group-text">cm</span>
+                                </div>
+                                @Html.ValidationMessageFor(m => m.Height, "", new { @class = "text-danger" })
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Width)
+                                <div class="input-group">
+                                    @Html.TextBoxFor(m => m.Width, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                                    <span class="input-group-text">cm</span>
+                                </div>
+                                @Html.ValidationMessageFor(m => m.Width, "", new { @class = "text-danger" })
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Length)
+                                <div class="input-group">
+                                    @Html.TextBoxFor(m => m.Length, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                                    <span class="input-group-text">cm</span>
+                                </div>
+                                @Html.ValidationMessageFor(m => m.Length, "", new { @class = "text-danger" })
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="d-flex justify-content-between">
+                <div>
+                    @Html.ActionLink("Voltar para Variantes", "ManageVariants", new { id = Model.ProductTemplateId }, new { @class = "btn btn-secondary" })
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Salvar Alterações
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
