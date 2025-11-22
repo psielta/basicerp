@@ -7,6 +7,7 @@ using EntityFrameworkProject.Data;
 using Microsoft.EntityFrameworkCore;
 using WebApplicationBasic.Models.ViewModels;
 using WebApplicationBasic.Services;
+using Serilog;
 
 namespace WebApplicationBasic.Controllers
 {
@@ -203,12 +204,23 @@ namespace WebApplicationBasic.Controllers
                 newImageUrl = model.CurrentImage;
             }
 
+            var oldEmail = user.Email;
             user.Name = model.Name;
             user.Email = model.Email;
             user.Image = newImageUrl;
             user.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            if (oldEmail != model.Email)
+            {
+                Log.Information("PROFILE_UPDATED: Usuário {UserId} atualizou perfil - Email alterado de {OldEmail} para {NewEmail}",
+                    CurrentUserId, oldEmail, model.Email);
+            }
+            else
+            {
+                Log.Information("PROFILE_UPDATED: Usuário {UserId} atualizou perfil", CurrentUserId);
+            }
 
             TempData["Success"] = "Perfil atualizado com sucesso!";
             return RedirectToAction("Profile");
@@ -243,11 +255,13 @@ namespace WebApplicationBasic.Controllers
 
             if (success)
             {
+                Log.Information("PASSWORD_CHANGE_REQUEST: Usuário {UserId} alterou senha via AccountController", CurrentUserId);
                 TempData["Success"] = "Senha alterada com sucesso!";
                 return RedirectToAction("Profile");
             }
             else
             {
+                Log.Warning("PASSWORD_CHANGE_FAILED: Senha atual incorreta para usuário {UserId}", CurrentUserId);
                 ModelState.AddModelError("CurrentPassword", "Senha atual incorreta.");
                 return View(model);
             }
@@ -293,6 +307,9 @@ namespace WebApplicationBasic.Controllers
                 return RedirectToAction("Security");
             }
 
+            Log.Information("SESSION_REVOKE_REQUEST: Usuário {UserId} solicitou revogação da sessão {SessionToken}",
+                CurrentUserId, sessionToken);
+
             var success = await _authService.RevokeSessionAsync(sessionToken, CurrentUserId);
 
             if (success)
@@ -301,6 +318,8 @@ namespace WebApplicationBasic.Controllers
             }
             else
             {
+                Log.Warning("SESSION_REVOKE_FAILED: Falha ao revogar sessão {SessionToken} para usuário {UserId}",
+                    sessionToken, CurrentUserId);
                 TempData["Error"] = "Erro ao revogar sessão.";
             }
 
@@ -316,8 +335,12 @@ namespace WebApplicationBasic.Controllers
                 .FirstOrDefault(c => c.Type == "SessionToken")?.Value;
 
             var sessions = await _authService.GetUserSessionsAsync(CurrentUserId);
+            var sessionsToRevoke = sessions.Where(s => s.Token != currentSessionToken).ToList();
 
-            foreach (var session in sessions.Where(s => s.Token != currentSessionToken))
+            Log.Information("ALL_SESSIONS_REVOKE_REQUEST: Usuário {UserId} solicitou revogação de {Count} sessões",
+                CurrentUserId, sessionsToRevoke.Count);
+
+            foreach (var session in sessionsToRevoke)
             {
                 await _authService.RevokeSessionAsync(session.Token, CurrentUserId);
             }

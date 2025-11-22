@@ -7,6 +7,7 @@ using EntityFrameworkProject.Models;
 using Microsoft.EntityFrameworkCore;
 using WebApplicationBasic.Filters;
 using WebApplicationBasic.Models.ViewModels;
+using Serilog;
 
 namespace WebApplicationBasic.Controllers
 {
@@ -139,6 +140,9 @@ namespace WebApplicationBasic.Controllers
 
             Context.ProductAttributes.Add(attribute);
             await Context.SaveChangesAsync();
+
+            Log.Information("PRODUCT_ATTRIBUTE_CREATED: Atributo {AttributeId} \"{AttributeName}\" criado com {ValueCount} valores por usuário {UserId} na organização {OrganizationId}",
+                attribute.Id, attribute.Name, attribute.Values.Count, CurrentUserId, CurrentOrganizationId);
 
             TempData["Success"] = "Atributo criado com sucesso.";
             return RedirectToAction("Index");
@@ -294,6 +298,9 @@ namespace WebApplicationBasic.Controllers
 
             await Context.SaveChangesAsync();
 
+            Log.Information("PRODUCT_ATTRIBUTE_UPDATED: Atributo {AttributeId} \"{AttributeName}\" atualizado por usuário {UserId} na organização {OrganizationId}",
+                attribute.Id, attribute.Name, CurrentUserId, CurrentOrganizationId);
+
             TempData["Success"] = "Atributo atualizado com sucesso.";
             return RedirectToAction("Index");
         }
@@ -343,8 +350,12 @@ namespace WebApplicationBasic.Controllers
             if (attribute == null)
                 return HttpNotFound();
 
+            var attributeName = attribute.Name;
             Context.ProductAttributes.Remove(attribute);
             await Context.SaveChangesAsync();
+
+            Log.Information("PRODUCT_ATTRIBUTE_DELETED: Atributo {AttributeId} \"{AttributeName}\" excluído por usuário {UserId} na organização {OrganizationId}",
+                id, attributeName, CurrentUserId, CurrentOrganizationId);
 
             TempData["Success"] = "Atributo excluído com sucesso.";
             return RedirectToAction("Index");

@@ -7,6 +7,7 @@ using System.Web;
 using EntityFrameworkProject.Data;
 using EntityFrameworkProject.Models;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace WebApplicationBasic.Services
 {
@@ -25,6 +26,9 @@ namespace WebApplicationBasic.Services
             // Limpar sessões expiradas do usuário
             CleanExpiredSessions(userId);
 
+            var ipAddress = GetClientIpAddress(request);
+            var userAgent = request.UserAgent;
+
             var session = new Session
             {
                 Id = Guid.NewGuid(),
@@ -32,8 +36,8 @@ namespace WebApplicationBasic.Services
                 ActiveOrganizationId = organizationId,
                 Token = GenerateSecureToken(),
                 ExpiresAt = DateTime.UtcNow.AddHours(SessionExpirationHours),
-                IpAddress = GetClientIpAddress(request),
-                UserAgent = request.UserAgent,
+                IpAddress = ipAddress,
+                UserAgent = userAgent,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -41,26 +45,46 @@ namespace WebApplicationBasic.Services
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
+            Log.Information("SESSION_CREATED: Sessão {SessionToken} criada para usuário {UserId} na organização {OrganizationId} - IP: {IpAddress}, UserAgent: {UserAgent}, Expira em: {ExpiresAt}",
+                session.Token, userId, organizationId, ipAddress, userAgent, session.ExpiresAt);
+
             return session;
         }
 
         public Session GetSession(string token)
         {
             if (string.IsNullOrEmpty(token))
+            {
+                Log.Debug("SESSION_GET_FAILED: Token vazio fornecido");
                 return null;
+            }
 
-            return _context.Sessions
+            var session = _context.Sessions
                 .Include(s => s.User)
                     .ThenInclude(u => u.Memberships)
                         .ThenInclude(m => m.Organization)
                 .Include(s => s.ActiveOrganization)
                 .FirstOrDefault(s => s.Token == token && s.ExpiresAt > DateTime.UtcNow);
+
+            if (session == null)
+            {
+                Log.Warning("SESSION_GET_FAILED: Sessão não encontrada ou expirada para token {SessionToken}", token);
+            }
+            else
+            {
+                Log.Debug("SESSION_GET_SUCCESS: Sessão {SessionToken} recuperada para usuário {UserId}", token, session.UserId);
+            }
+
+            return session;
         }
 
         public Session GetSessionWithDetails(string token)
         {
             if (string.IsNullOrEmpty(token))
+            {
+                Log.Debug("SESSION_GET_DETAILS_FAILED: Token vazio fornecido");
                 return null;
+            }
 
             var session = _context.Sessions
                 .Include(s => s.User)
@@ -71,6 +95,8 @@ namespace WebApplicationBasic.Services
 
             if (session != null)
             {
+                var oldExpiry = session.ExpiresAt;
+
                 // Atualizar última atividade
                 session.UpdatedAt = DateTime.UtcNow;
 
@@ -78,6 +104,13 @@ namespace WebApplicationBasic.Services
                 session.ExpiresAt = DateTime.UtcNow.AddHours(SessionExpirationHours);
 
                 _context.SaveChanges();
+
+                Log.Debug("SESSION_RENEWED: Sessão {SessionToken} renovada para usuário {UserId} - Expirava em: {OldExpiry}, Nova expiração: {NewExpiry}",
+                    token, session.UserId, oldExpiry, session.ExpiresAt);
+            }
+            else
+            {
+                Log.Warning("SESSION_GET_DETAILS_FAILED: Sessão não encontrada ou expirada para token {SessionToken}", token);
             }
 
             return session;
@@ -88,9 +121,17 @@ namespace WebApplicationBasic.Services
             var session = GetSession(token);
             if (session != null)
             {
+                var oldOrgId = session.ActiveOrganizationId;
                 session.ActiveOrganizationId = organizationId;
                 session.UpdatedAt = DateTime.UtcNow;
                 _context.SaveChanges();
+
+                Log.Information("SESSION_ORGANIZATION_CHANGED: Sessão {SessionToken} do usuário {UserId} mudou de organização {OldOrganizationId} para {NewOrganizationId}",
+                    token, session.UserId, oldOrgId, organizationId);
+            }
+            else
+            {
+                Log.Warning("SESSION_ORGANIZATION_CHANGE_FAILED: Sessão não encontrada para token {SessionToken}", token);
             }
         }
 
@@ -101,14 +142,26 @@ namespace WebApplicationBasic.Services
             {
                 _context.Sessions.Remove(session);
                 _context.SaveChanges();
+
+                Log.Information("SESSION_INVALIDATED: Sessão {SessionToken} invalidada para usuário {UserId}",
+                    token, session.UserId);
+            }
+            else
+            {
+                Log.Debug("SESSION_INVALIDATE_FAILED: Sessão não encontrada para token {SessionToken}", token);
             }
         }
 
         public void InvalidateAllUserSessions(Guid userId)
         {
             var sessions = _context.Sessions.Where(s => s.UserId == userId).ToList();
+            var count = sessions.Count;
+
             _context.Sessions.RemoveRange(sessions);
             _context.SaveChanges();
+
+            Log.Information("ALL_SESSIONS_INVALIDATED: {Count} sessões invalidadas para usuário {UserId}",
+                count, userId);
         }
 
         private void CleanExpiredSessions(Guid userId)
@@ -119,8 +172,12 @@ namespace WebApplicationBasic.Services
 
             if (expiredSessions.Any())
             {
+                var count = expiredSessions.Count;
                 _context.Sessions.RemoveRange(expiredSessions);
                 _context.SaveChanges();
+
+                Log.Debug("EXPIRED_SESSIONS_CLEANED: {Count} sessões expiradas removidas para usuário {UserId}",
+                    count, userId);
             }
         }
 

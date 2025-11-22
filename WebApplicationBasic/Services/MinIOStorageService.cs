@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Minio;
 using Minio.DataModel.Args;
 using Minio.Exceptions;
+using Serilog;
 
 namespace WebApplicationBasic.Services
 {
@@ -53,6 +54,9 @@ namespace WebApplicationBasic.Services
         {
             try
             {
+                Log.Information("STORAGE_UPLOAD_START: Iniciando upload do arquivo {FileName} ({ContentType}, {Size} bytes) para bucket {BucketName}",
+                    fileName, contentType, fileStream.Length, _bucketName);
+
                 // Garantir que o bucket existe
                 await EnsureBucketExistsAsync();
 
@@ -66,11 +70,18 @@ namespace WebApplicationBasic.Services
 
                 await GetMinioClient().PutObjectAsync(putObjectArgs);
 
+                var url = GetFileUrl(fileName);
+
+                Log.Information("STORAGE_UPLOAD_SUCCESS: Arquivo {FileName} enviado com sucesso para {Url}",
+                    fileName, url);
+
                 // Retornar URL pública
-                return GetFileUrl(fileName);
+                return url;
             }
             catch (MinioException ex)
             {
+                Log.Error(ex, "STORAGE_UPLOAD_FAILED: Falha ao enviar arquivo {FileName} para bucket {BucketName}",
+                    fileName, _bucketName);
                 throw new Exception($"Erro ao fazer upload do arquivo: {ex.Message}", ex);
             }
         }
@@ -80,7 +91,12 @@ namespace WebApplicationBasic.Services
             try
             {
                 if (string.IsNullOrEmpty(fileName))
+                {
+                    Log.Warning("STORAGE_DELETE_FAILED: Nome de arquivo vazio fornecido");
                     return false;
+                }
+
+                var originalFileName = fileName;
 
                 // Extrair apenas o nome do arquivo da URL se necessário
                 if (fileName.StartsWith("http"))
@@ -95,15 +111,22 @@ namespace WebApplicationBasic.Services
                     }
                 }
 
+                Log.Information("STORAGE_DELETE_START: Deletando arquivo {FileName} do bucket {BucketName}",
+                    fileName, _bucketName);
+
                 var removeObjectArgs = new RemoveObjectArgs()
                     .WithBucket(_bucketName)
                     .WithObject(fileName);
 
                 await GetMinioClient().RemoveObjectAsync(removeObjectArgs);
+
+                Log.Information("STORAGE_DELETE_SUCCESS: Arquivo {FileName} deletado com sucesso", fileName);
                 return true;
             }
-            catch (MinioException)
+            catch (MinioException ex)
             {
+                Log.Warning(ex, "STORAGE_DELETE_FAILED: Falha ao deletar arquivo {FileName} do bucket {BucketName}",
+                    fileName, _bucketName);
                 // Arquivo não existe ou erro ao deletar
                 return false;
             }
@@ -154,6 +177,8 @@ namespace WebApplicationBasic.Services
 
                 if (!found)
                 {
+                    Log.Information("STORAGE_BUCKET_CREATE: Criando bucket {BucketName}", _bucketName);
+
                     var makeBucketArgs = new MakeBucketArgs()
                         .WithBucket(_bucketName);
 
@@ -179,12 +204,19 @@ namespace WebApplicationBasic.Services
                         .WithPolicy(policy);
 
                     await GetMinioClient().SetPolicyAsync(setPolicyArgs);
+
+                    Log.Information("STORAGE_BUCKET_CREATED: Bucket {BucketName} criado com sucesso e política pública configurada", _bucketName);
+                }
+                else
+                {
+                    Log.Debug("STORAGE_BUCKET_EXISTS: Bucket {BucketName} já existe", _bucketName);
                 }
 
                 return true;
             }
             catch (MinioException ex)
             {
+                Log.Error(ex, "STORAGE_BUCKET_ERROR: Erro ao criar/verificar bucket {BucketName}", _bucketName);
                 throw new Exception($"Erro ao criar/verificar bucket: {ex.Message}", ex);
             }
         }

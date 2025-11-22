@@ -1,4 +1,9 @@
-﻿using System;
+﻿using EntityFrameworkProject.Data;
+using Microsoft.Extensions.DependencyInjection;
+using Serilog;
+using Serilog.Events;
+using SerilogWeb.Classic;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -6,8 +11,6 @@ using System.Web.Helpers;
 using System.Web.Mvc;
 using System.Web.Optimization;
 using System.Web.Routing;
-using EntityFrameworkProject.Data;
-using Microsoft.Extensions.DependencyInjection;
 using WebApplicationBasic.App_Start;
 using WebApplicationBasic.Data;
 
@@ -17,6 +20,27 @@ namespace WebApplicationBasic
     {
         protected void Application_Start()
         {
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .MinimumLevel.Override("System", LogEventLevel.Warning)
+                .Enrich.FromLogContext()
+
+                .Enrich.WithHttpRequestId()             
+                .Enrich.WithHttpRequestNumber()         
+                .Enrich.WithHttpRequestClientHostIP()   
+
+                .WriteTo.File(Server.MapPath("~/Logs/log-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 7)
+                .CreateLogger();
+
+            SerilogWebClassic.Configure(cfg => cfg
+                .LogAtLevel(LogEventLevel.Information)
+                .LogAtLevel((ctx, elapsed) =>
+                    elapsed.TotalMilliseconds > 3000
+                        ? LogEventLevel.Warning
+                        : LogEventLevel.Information)
+            );
             AreaRegistration.RegisterAllAreas();
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);

@@ -47,7 +47,7 @@ namespace WebApplicationBasic.Controllers
         /// <summary>
         /// ID da organização ativa do usuário
         /// </summary>
-        protected Guid CurrentOrganizationId
+        public Guid CurrentOrganizationId
         {
             get
             {

@@ -7,6 +7,7 @@ using EntityFrameworkProject.Models;
 using Microsoft.EntityFrameworkCore;
 using WebApplicationBasic.Filters;
 using WebApplicationBasic.Models.ViewModels;
+using Serilog;
 
 namespace WebApplicationBasic.Controllers
 {
@@ -656,8 +657,12 @@ namespace WebApplicationBasic.Controllers
                 return HttpNotFound();
             }
 
+            var productName = template.Name;
             Context.ProductTemplates.Remove(template);
             await Context.SaveChangesAsync();
+
+            Log.Information("PRODUCT_DELETED: Produto {ProductId} \"{ProductName}\" excluído por usuário {UserId} na organização {OrganizationId}",
+                id, productName, CurrentUserId, CurrentOrganizationId);
 
             TempData["Success"] = "Produto excluído com sucesso.";
             return RedirectToAction("Index");
@@ -885,6 +890,9 @@ namespace WebApplicationBasic.Controllers
                 Context.ProductTemplates.Add(template);
                 await Context.SaveChangesAsync();
 
+                Log.Information("PRODUCT_CREATED: Produto {ProductId} \"{ProductName}\" ({ProductType}) criado com {VariantCount} variante(s) por usuário {UserId} na organização {OrganizationId}",
+                    template.Id, template.Name, model.ProductType, template.Variants?.Count ?? 0, CurrentUserId, CurrentOrganizationId);
+
                 TempData["Success"] = "Produto criado com sucesso.";
                 return RedirectToAction("Index");
             }
@@ -1073,6 +1081,9 @@ namespace WebApplicationBasic.Controllers
             variant.UpdatedAt = DateTime.UtcNow;
 
             await Context.SaveChangesAsync();
+
+            Log.Information("PRODUCT_VARIANT_UPDATED: Variante {VariantId} (SKU: {Sku}) atualizada por usuário {UserId} na organização {OrganizationId}",
+                variant.Id, variant.Sku, CurrentUserId, CurrentOrganizationId);
 
             TempData["Success"] = "Variante atualizada com sucesso.";
             return RedirectToAction("ManageVariants", new { id = variant.ProductTemplateId });

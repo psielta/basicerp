@@ -5,6 +5,7 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using WebApplicationBasic.Filters;
+using Serilog;
 
 namespace WebApplicationBasic.Controllers
 {
@@ -24,6 +25,9 @@ namespace WebApplicationBasic.Controllers
 
         public ActionResult Index()
         {
+            Log.Debug("DASHBOARD_ACCESS: Usuário {UserId} acessando dashboard na organização {OrganizationId}",
+                CurrentUserId, CurrentOrganizationId);
+
             // Estatísticas globais
             var totalOrganizations = Context.Organizations.Count();
             var totalUsers = Context.Users.Count();

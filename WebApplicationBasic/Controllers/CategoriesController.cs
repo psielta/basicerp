@@ -9,6 +9,7 @@ using EntityFrameworkProject.Models;
 using Microsoft.EntityFrameworkCore;
 using WebApplicationBasic.Filters;
 using WebApplicationBasic.Models.ViewModels;
+using Serilog;
 
 namespace WebApplicationBasic.Controllers
 {
@@ -122,6 +123,9 @@ namespace WebApplicationBasic.Controllers
             Context.Categories.Add(category);
             await Context.SaveChangesAsync();
 
+            Log.Information("CATEGORY_CREATED: Categoria {CategoryId} \"{CategoryName}\" criada por usuário {UserId} na organização {OrganizationId}",
+                category.Id, category.Name, CurrentUserId, CurrentOrganizationId);
+
             TempData["Success"] = "Categoria criada com sucesso.";
             return RedirectToAction("Index");
         }
@@ -232,6 +236,9 @@ namespace WebApplicationBasic.Controllers
 
             await Context.SaveChangesAsync();
 
+            Log.Information("CATEGORY_UPDATED: Categoria {CategoryId} \"{CategoryName}\" atualizada por usuário {UserId} na organização {OrganizationId}",
+                category.Id, category.Name, CurrentUserId, CurrentOrganizationId);
+
             TempData["Success"] = "Categoria atualizada com sucesso.";
             return RedirectToAction("Index");
         }
@@ -337,8 +344,12 @@ namespace WebApplicationBasic.Controllers
                 return HttpNotFound();
             }
 
+            var categoryName = category.Name;
             Context.Categories.Remove(category);
             await Context.SaveChangesAsync();
+
+            Log.Information("CATEGORY_DELETED: Categoria {CategoryId} \"{CategoryName}\" excluída por usuário {UserId} na organização {OrganizationId}",
+                id, categoryName, CurrentUserId, CurrentOrganizationId);
 
             TempData["Success"] = "Categoria excluída com sucesso.";
             return RedirectToAction("Index");

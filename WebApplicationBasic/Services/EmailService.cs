@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using MailKit.Net.Smtp;
 using MimeKit;
+using Serilog;
 
 namespace WebApplicationBasic.Services
 {
@@ -25,6 +26,8 @@ namespace WebApplicationBasic.Services
         {
             try
             {
+                Log.Information("EMAIL_SEND_START: Enviando email para {To} com assunto \"{Subject}\"", to, subject);
+
                 var message = new MimeMessage();
                 message.From.Add(new MailboxAddress(_fromName, _fromEmail));
                 message.To.Add(MailboxAddress.Parse(to));
@@ -46,16 +49,19 @@ namespace WebApplicationBasic.Services
                     await client.SendAsync(message);
                     await client.DisconnectAsync(true);
                 }
+
+                Log.Information("EMAIL_SENT_SUCCESS: Email enviado com sucesso para {To} - Assunto: \"{Subject}\"", to, subject);
             }
             catch (Exception ex)
             {
-                // Em produção, você deve logar o erro
+                Log.Error(ex, "EMAIL_SEND_FAILED: Falha ao enviar email para {To} - Assunto: \"{Subject}\"", to, subject);
                 throw new Exception($"Erro ao enviar email: {ex.Message}", ex);
             }
         }
 
         public async Task SendOtpEmailAsync(string to, string userName, string otpCode)
         {
+            Log.Information("EMAIL_OTP: Preparando envio de OTP para {Email} ({UserName})", to, userName);
             var subject = "Seu código de verificação - BasicERP";
 
             var body = $@"
@@ -97,6 +103,7 @@ namespace WebApplicationBasic.Services
 
         public async Task SendPasswordResetEmailAsync(string to, string userName, string resetUrl)
         {
+            Log.Information("EMAIL_PASSWORD_RESET: Preparando envio de link de reset para {Email} ({UserName})", to, userName);
             var subject = "Redefinir senha - BasicERP";
 
             var body = $@"
@@ -148,6 +155,7 @@ namespace WebApplicationBasic.Services
 
         public async Task SendPasswordChangedEmailAsync(string to, string userName)
         {
+            Log.Information("EMAIL_PASSWORD_CHANGED: Preparando envio de confirmação de troca de senha para {Email} ({UserName})", to, userName);
             var subject = "Senha alterada com sucesso - BasicERP";
 
             var body = $@"
