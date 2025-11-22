@@ -40,14 +40,17 @@
                             <span class="badge">2</span> Categorias
                         </a>
                     </li>
-                    <li>
-                        <a href="#step3" data-toggle="tab">
-                            <span class="badge">3</span> Atributos
-                        </a>
-                    </li>
+                    @if (Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Configurable)
+                    {
+                        <li>
+                            <a href="#step3" data-toggle="tab">
+                                <span class="badge">3</span> Atributos de Variação
+                            </a>
+                        </li>
+                    }
                     <li>
                         <a href="#step4" data-toggle="tab">
-                            <span class="badge">4</span>
+                            <span class="badge">@(Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple ? "3" : "4")</span>
                             @if (Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple)
                             {
                                 <text>SKU e Detalhes</text>
@@ -60,14 +63,12 @@
                     </li>
                     <li>
                         <a href="#step5" data-toggle="tab">
-                            <span class="badge">5</span> Revisão
+                            <span class="badge">@(Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple ? "4" : "5")</span> Revisão
                         </a>
                     </li>
                 </ul>
             </div>
         </div>
-
-        <hr />
 
         <!-- Tab Content -->
         <div class="tab-content">
@@ -189,46 +190,10 @@
                 </div>
             </div>
 
-            <!-- Step 3: Atributos -->
-            <div class="tab-pane" id="step3">
-                @if (Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple)
-                {
-                    <!-- Apenas atributos descritivos para produtos simples -->
-                    <h3>Atributos Descritivos</h3>
-                    <p class="text-muted">Adicione informações adicionais sobre o produto</p>
-
-                    <div id="descriptive-attributes">
-                        @if (Model.DescriptiveAttributes != null && Model.DescriptiveAttributes.Any())
-                        {
-                            foreach (var attr in Model.DescriptiveAttributes)
-                            {
-                                <div class="card">
-                                    <div class="card-header">@attr.AttributeName</div>
-                                    <div class="card-body">
-                                        @foreach (var value in attr.AvailableValues)
-                                        {
-                                            <label class="form-check form-check-inline">
-                                                <input type="checkbox" class="form-check-input" name="DescriptiveAttributes[@attr.AttributeId].SelectedValueIds"
-                                                       value="@value.Id" @(value.IsSelected ? "checked" : "") />
-                                                <span class="form-check-label">@value.Value</span>
-                                            </label>
-                                        }
-                                    </div>
-                                </div>
-                            }
-                        }
-                        else
-                        {
-                            <div class="alert alert-info">
-                                Nenhum atributo descritivo disponível.
-                                @Html.ActionLink("Cadastrar atributos", "Index", "ProductAttributes")
-                            </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <!-- Atributos de variação e descritivos para produtos configuráveis -->
+            @if (Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Configurable)
+            {
+                <!-- Step 3: Atributos de Variação (apenas para produtos configuráveis) -->
+                <div class="tab-pane" id="step3">
                     <h3>Atributos de Variação</h3>
                     <p class="text-muted">Selecione os atributos que criarão variações do produto</p>
 
@@ -269,45 +234,19 @@
                         else
                         {
                             <div class="alert alert-info">
-                                Nenhum atributo de variação disponível.
-                                @Html.ActionLink("Cadastrar atributos", "Create", "ProductAttributes")
+                                <i class="bi bi-info-circle"></i>
+                                Nenhum atributo de variação cadastrado.
+                                @Html.ActionLink("Cadastrar atributos de variação", "Index", "ProductAttributes", null, new { target = "_blank" })
                             </div>
                         }
                     </div>
+                </div>
+            }
 
-                    <hr />
-
-                    <h4>Atributos Descritivos (opcional)</h4>
-                    <p class="text-muted">Informações adicionais que se aplicam a todas as variações</p>
-                    <div id="descriptive-attributes-configurable">
-                        @if (Model.DescriptiveAttributes != null && Model.DescriptiveAttributes.Any(a => !Model.VariantAttributes.Any(v => v.AttributeId == a.AttributeId)))
-                        {
-                            foreach (var attr in Model.DescriptiveAttributes.Where(a => !Model.VariantAttributes.Any(v => v.AttributeId == a.AttributeId)))
-                            {
-                                <div class="card">
-                                    <div class="card-header">@attr.AttributeName</div>
-                                    <div class="card-body">
-                                        @foreach (var value in attr.AvailableValues)
-                                        {
-                                            <label class="form-check form-check-inline">
-                                                <input type="checkbox" class="form-check-input" name="DescriptiveAttributes[@attr.AttributeId].SelectedValueIds"
-                                                       value="@value.Id" @(value.IsSelected ? "checked" : "") />
-                                                <span class="form-check-label">@value.Value</span>
-                                            </label>
-                                        }
-                                    </div>
-                                </div>
-                            }
-                        }
-                    </div>
-                }
-            </div>
-
-            <!-- Step 4: SKU/Variações -->
-            <div class="tab-pane" id="step4">
-                @if (Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple)
-                {
-                    <!-- Produto Simples - Um SKU -->
+            @if (Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple)
+            {
+                <!-- Step 3: SKU e Detalhes (para produtos simples) -->
+                <div class="tab-pane" id="step3">
                     <h3>Detalhes do SKU</h3>
                     <div class="row">
                         <div class="col-md-6">
@@ -369,10 +308,29 @@
                             @Html.DisplayNameFor(m => m.IsActive)
                         </label>
                     </div>
-                }
-                else
-                {
-                    <!-- Produto Configurável - Múltiplos SKUs -->
+                </div>
+
+                <!-- Step 4: Revisão (para produtos simples) -->
+                <div class="tab-pane" id="step4">
+                    <h3>Revisão Final</h3>
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Resumo do Produto</h5>
+                        </div>
+                        <div class="card-body" id="product-summary">
+                            <!-- Será preenchido via JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>Importante:</strong> Revise todas as informações antes de salvar.
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Step 4: Variações (para produtos configuráveis) -->
+                <div class="tab-pane" id="step4">
                     <h3>Variações do Produto</h3>
                     <p class="text-muted">Configure as variações baseadas nos atributos selecionados</p>
 
@@ -401,25 +359,25 @@
                             </tbody>
                         </table>
                     </div>
-                }
-            </div>
-
-            <!-- Step 5: Revisão -->
-            <div class="tab-pane" id="step5">
-                <h3>Revisão Final</h3>
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">Resumo do Produto</h5>
-                    </div>
-                    <div class="card-body" id="product-summary">
-                        <!-- Será preenchido via JavaScript -->
-                    </div>
                 </div>
 
-                <div class="alert alert-info">
-                    <strong>Importante:</strong> Revise todas as informações antes de salvar.
+                <!-- Step 5: Revisão (para produtos configuráveis) -->
+                <div class="tab-pane" id="step5">
+                    <h3>Revisão Final</h3>
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Resumo do Produto</h5>
+                        </div>
+                        <div class="card-body" id="product-summary">
+                            <!-- Será preenchido via JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>Importante:</strong> Revise todas as informações antes de salvar.
+                    </div>
                 </div>
-            </div>
+            }
         </div>
 
         <!-- Navigation -->
@@ -465,44 +423,161 @@
 @section Scripts {
     @Scripts.Render("~/bundles/jqueryval")
 
-    <script src="~/Scripts/product-wizard.js"></script>
+    <script src="~/Scripts/product-wizard.js?v=1.4"></script>
 
     <style>
         .wizard-container {
             min-height: 500px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
 
-        .nav-pills .nav-link {
+        /* Estilo das tabs do wizard */
+        #wizardTabs {
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 0;
+        }
+
+        #wizardTabs > li {
+            margin-bottom: -2px;
+        }
+
+        #wizardTabs > li > a {
+            border: none;
             border-radius: 0;
-            background-color: #f5f5f5;
-            color: #333;
+            background-color: transparent;
+            color: #6c757d;
+            padding: 15px 20px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            position: relative;
+            display: block;
         }
 
-        .nav-pills .nav-link.active {
-            background-color: #337ab7;
+        #wizardTabs > li > a:hover {
+            background-color: #f8f9fa;
+            color: #495057;
+            border: none;
+        }
+
+        #wizardTabs > li.active > a,
+        #wizardTabs > li.active > a:hover,
+        #wizardTabs > li.active > a:focus {
+            background-color: transparent;
+            color: #0d6efd;
+            border: none;
+            border-bottom: 3px solid #0d6efd;
+        }
+
+        #wizardTabs > li.completed > a {
+            color: #198754;
+        }
+
+        #wizardTabs > li.completed > a .badge {
+            background-color: #198754;
             color: white;
         }
 
-        .nav-pills .completed .nav-link {
-            background-color: #5cb85c;
+        #wizardTabs .badge {
+            display: inline-block;
+            min-width: 28px;
+            height: 28px;
+            line-height: 28px;
+            padding: 0 8px;
+            border-radius: 50%;
+            background-color: #dee2e6;
+            color: #6c757d;
+            font-size: 14px;
+            font-weight: 600;
+            margin-right: 8px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        #wizardTabs > li.active .badge {
+            background-color: #0d6efd;
             color: white;
+            transform: scale(1.1);
         }
 
-        .badge {
-            background-color: rgba(255, 255, 255, 0.3);
+        /* Conteúdo das tabs */
+        .tab-content {
+            padding: 30px 20px;
+            background: #fff;
+            border-radius: 0 0 8px 8px;
         }
 
+        .tab-content > .tab-pane {
+            display: none;
+        }
+
+        .tab-content > .active {
+            display: block;
+        }
+
+        /* Categorias */
         .category-item {
             margin: 5px 0;
+            padding: 5px 0;
+        }
+
+        .category-item label {
+            cursor: pointer;
+            font-weight: normal;
+        }
+
+        .category-item input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        /* Atributos de variação */
+        .variant-attribute-panel {
+            margin-bottom: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            transition: all 0.3s ease;
         }
 
         .variant-attribute-panel.active {
-            border-color: #337ab7;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+        }
+
+        .variant-attribute-panel .card-header {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            border-radius: 4px 4px 0 0;
         }
 
         .variant-attribute-panel.active .card-header {
-            background-color: #337ab7;
+            background-color: #0d6efd;
             color: white;
+        }
+
+        /* Botões de navegação */
+        #prevBtn, #nextBtn, #submitBtn {
+            min-width: 120px;
+            padding: 10px 25px;
+            font-weight: 500;
+        }
+
+        /* Responsividade */
+        @@media (max-width: 768px) {
+            #wizardTabs > li > a {
+                padding: 12px 10px;
+                font-size: 12px;
+            }
+
+            #wizardTabs .badge {
+                min-width: 24px;
+                height: 24px;
+                line-height: 24px;
+                font-size: 12px;
+            }
         }
     </style>
 }

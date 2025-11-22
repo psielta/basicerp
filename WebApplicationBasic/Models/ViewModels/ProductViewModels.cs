@@ -30,7 +30,7 @@ namespace WebApplicationBasic.Models.ViewModels
         // Novos campos para mostrar informações adicionais
         public int VariantCount { get; set; }
         public int ActiveVariantCount { get; set; }
-        public ProductType ProductType => VariantCount > 1 ? ProductType.Configurable : ProductType.Simple;
+        public ProductType ProductType { get; set; }
         public List<string> Categories { get; set; } = new List<string>();
     }
 
@@ -188,8 +188,18 @@ namespace WebApplicationBasic.Models.ViewModels
         // Atributos de variação desta variante específica
         public Dictionary<Guid, Guid> VariantAttributeValues { get; set; } = new Dictionary<Guid, Guid>();
 
+        // Lista alternativa para binding (mais compatível com MVC)
+        public List<VariantAttributeValuePair> VariantAttributeValuesList { get; set; } = new List<VariantAttributeValuePair>();
+
         // Para exibição
         public string VariantDescription { get; set; }
+    }
+
+    // Classe auxiliar para binding de atributos de variação
+    public class VariantAttributeValuePair
+    {
+        public Guid AttributeId { get; set; }
+        public Guid AttributeValueId { get; set; }
     }
 
     // ViewModel para seleção de categorias

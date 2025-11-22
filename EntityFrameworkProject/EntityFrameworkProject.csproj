@@ -154,6 +154,14 @@
     <Compile Include="Migrations\20251120193344_SpuSku.Designer.cs">
       <DependentUpon>20251120193344_SpuSku.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\20251122205635_RemoveAtributeSpu.cs" />
+    <Compile Include="Migrations\20251122205635_RemoveAtributeSpu.Designer.cs">
+      <DependentUpon>20251122205635_RemoveAtributeSpu.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\20251122231603_AddProductTypeToTemplate.cs" />
+    <Compile Include="Migrations\20251122231603_AddProductTypeToTemplate.Designer.cs">
+      <DependentUpon>20251122231603_AddProductTypeToTemplate.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\ApplicationDbContextModelSnapshot.cs" />
     <Compile Include="Models\Account.cs" />
     <Compile Include="Models\Category.cs" />
@@ -163,7 +171,6 @@
     <Compile Include="Models\ProductAttributeValue.cs" />
     <Compile Include="Models\ProductImage.cs" />
     <Compile Include="Models\ProductTemplate.cs" />
-    <Compile Include="Models\ProductTemplateAttributeValue.cs" />
     <Compile Include="Models\ProductTemplateCategory.cs" />
     <Compile Include="Models\ProductVariant.cs" />
     <Compile Include="Models\ProductVariantAttributeValue.cs" />

@@ -67,17 +67,11 @@ namespace WebApplicationBasic.Controllers
                     ViewBag.ActiveVariants = activeVariants;
 
                     // Produtos por tipo
-                    var productsWithVariants = Context.ProductTemplates
-                        .Where(p => p.OrganizationId == CurrentOrganizationId && p.DeletedAt == null)
-                        .Select(p => new
-                        {
-                            p.Id,
-                            VariantCount = p.Variants.Count(v => v.DeletedAt == null)
-                        })
-                        .ToList();
+                    var simpleProducts = Context.ProductTemplates
+                        .Count(p => p.OrganizationId == CurrentOrganizationId && p.DeletedAt == null && p.ProductType == 0);
 
-                    var simpleProducts = productsWithVariants.Count(p => p.VariantCount == 1);
-                    var configurableProducts = productsWithVariants.Count(p => p.VariantCount > 1);
+                    var configurableProducts = Context.ProductTemplates
+                        .Count(p => p.OrganizationId == CurrentOrganizationId && p.DeletedAt == null && p.ProductType == 1);
 
                     ViewBag.SimpleProducts = simpleProducts;
                     ViewBag.ConfigurableProducts = configurableProducts;

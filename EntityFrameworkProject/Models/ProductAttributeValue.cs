@@ -32,8 +32,6 @@ namespace EntityFrameworkProject.Models
         public ProductAttribute Attribute { get; set; }
 
         public ICollection<ProductVariantAttributeValue> VariantValues { get; set; }
-
-        public ICollection<ProductTemplateAttributeValue> TemplateValues { get; set; }
     }
 }
 

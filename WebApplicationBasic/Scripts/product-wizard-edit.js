@@ -9,6 +9,22 @@ $(document).ready(function () {
     showTab(currentTab);
     updateSelectedCategories();
 
+    // Toggle variant details
+    $('.toggle-details').click(function (e) {
+        e.stopPropagation();
+        var targetId = $(this).data('target');
+        var detailsRow = $(targetId);
+        var icon = $(this).find('i');
+
+        if (detailsRow.is(':visible')) {
+            detailsRow.hide();
+            $(this).removeClass('expanded');
+        } else {
+            detailsRow.show();
+            $(this).addClass('expanded');
+        }
+    });
+
     // Next button click
     $('#nextBtn').click(function () {
         if (validateCurrentTab()) {
@@ -69,6 +85,7 @@ $(document).ready(function () {
     function validateCurrentTab() {
         var valid = true;
         var currentPane = $(tabPanes[currentTab]);
+        var productType = $('#ProductType').val();
 
         // Add specific validations per tab
         switch (currentTab) {
@@ -79,28 +96,45 @@ $(document).ready(function () {
                     valid = false;
                 }
                 break;
-            case 3: // SKU/Variations
-                var productType = $('#ProductType').val();
-                if (productType === '0') { // Simple product
+            case 2: // SKU (for simple products) or Variant Attributes (for configurable)
+                if (productType === '0') { // Simple product - tab 2 is SKU
                     var sku = $('#Sku').val();
                     if (!sku || sku.trim() === '') {
                         alert('Por favor, informe o SKU do produto.');
                         valid = false;
                     }
-                } else { // Configurable product
-                    // Check if at least one variant is active
+                }
+                // For configurable products, tab 2 is attributes (no validation needed here)
+                break;
+            case 3: // Variations (for configurable products) or Review (for simple products)
+                if (productType === '1') { // Configurable product - tab 3 is Variations
+                    // Check if at least one variant is active (existing or new)
                     var hasActiveVariant = false;
-                    $('input[name*=".IsActive"]').each(function () {
+
+                    // Check existing variants
+                    $('#existing-variants input[name*="Variants"][name$=".IsActive"]').each(function () {
                         if ($(this).is(':checked')) {
                             hasActiveVariant = true;
                             return false;
                         }
                     });
+
+                    // Check new variants if no active existing variant found
+                    if (!hasActiveVariant) {
+                        $('#new-variants-table input[name*="Variants"][name$=".IsActive"]').each(function () {
+                            if ($(this).is(':checked')) {
+                                hasActiveVariant = true;
+                                return false;
+                            }
+                        });
+                    }
+
                     if (!hasActiveVariant) {
                         alert('O produto deve ter pelo menos uma variante ativa.');
                         valid = false;
                     }
                 }
+                // For simple products, tab 3 is Review (no validation needed)
                 break;
         }
 
@@ -213,19 +247,20 @@ $(document).ready(function () {
             var description = combo.map(function (c) { return c.attributeName + ': ' + c.valueName; }).join(', ');
 
             tableHtml += '<tr>';
-            tableHtml += '<td><input type="text" name="Variants[' + variantIndex + '].Sku" class="form-control input-sm" value="' + sku + '" /></td>';
+            tableHtml += '<td><input type="text" name="Variants[' + variantIndex + '].Sku" class="form-control input-sm" value="' + sku + '" required /></td>';
             tableHtml += '<td>' + description;
 
-            // Add hidden fields for variant attributes
-            combo.forEach(function (attr) {
-                tableHtml += '<input type="hidden" name="Variants[' + variantIndex + '].VariantAttributeValues[' + attr.attributeId + ']" value="' + attr.valueId + '" />';
+            // Add hidden fields for variant attributes (usando lista para melhor binding)
+            combo.forEach(function (attr, attrIndex) {
+                tableHtml += '<input type="hidden" name="Variants[' + variantIndex + '].VariantAttributeValuesList[' + attrIndex + '].AttributeId" value="' + attr.attributeId + '" />';
+                tableHtml += '<input type="hidden" name="Variants[' + variantIndex + '].VariantAttributeValuesList[' + attrIndex + '].AttributeValueId" value="' + attr.valueId + '" />';
             });
 
             tableHtml += '</td>';
-            tableHtml += '<td><input type="number" name="Variants[' + variantIndex + '].Cost" class="form-control input-sm" step="0.01" min="0" /></td>';
-            tableHtml += '<td><input type="number" name="Variants[' + variantIndex + '].Weight" class="form-control input-sm" step="0.001" min="0" /></td>';
-            tableHtml += '<td><input type="text" name="Variants[' + variantIndex + '].Barcode" class="form-control input-sm" /></td>';
-            tableHtml += '<td><input type="checkbox" name="Variants[' + variantIndex + '].IsActive" value="true" checked /><input type="hidden" name="Variants[' + variantIndex + '].IsActive" value="false" /></td>';
+            tableHtml += '<td><input type="text" name="Variants[' + variantIndex + '].Cost" class="form-control input-sm" placeholder="0.00" /></td>';
+            tableHtml += '<td><input type="text" name="Variants[' + variantIndex + '].Weight" class="form-control input-sm" placeholder="0.000" /></td>';
+            tableHtml += '<td><input type="text" name="Variants[' + variantIndex + '].Barcode" class="form-control input-sm" placeholder="EAN/GTIN" /></td>';
+            tableHtml += '<td class="text-center"><input type="checkbox" name="Variants[' + variantIndex + '].IsActive" value="true" checked /><input type="hidden" name="Variants[' + variantIndex + '].IsActive" value="false" /></td>';
             tableHtml += '</tr>';
         });
 

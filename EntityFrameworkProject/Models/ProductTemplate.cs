@@ -24,6 +24,10 @@ namespace EntityFrameworkProject.Models
         [Column("slug")]
         public string Slug { get; set; }
 
+        [Required]
+        [Column("product_type")]
+        public short ProductType { get; set; }
+
         [Column("brand")]
         public string Brand { get; set; }
 
@@ -71,8 +75,6 @@ namespace EntityFrameworkProject.Models
         public User CreatedByUser { get; set; }
 
         public ICollection<ProductVariant> Variants { get; set; }
-
-        public ICollection<ProductTemplateAttributeValue> AttributeValues { get; set; }
 
         public ICollection<ProductTemplateCategory> Categories { get; set; }
 

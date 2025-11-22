@@ -67,6 +67,7 @@ $(document).ready(function () {
     function validateCurrentTab() {
         var valid = true;
         var currentPane = $(tabPanes[currentTab]);
+        var productType = $('#ProductType').val();
 
         // Add specific validations per tab
         switch (currentTab) {
@@ -77,14 +78,25 @@ $(document).ready(function () {
                     valid = false;
                 }
                 break;
-            case 3: // SKU/Variations
-                if ($('#ProductType').val() === '0') { // Simple product
+            case 2: // SKU (for simple products) or Variant Attributes (for configurable)
+                if (productType === '0') { // Simple product - tab 2 is SKU
                     var sku = $('#Sku').val();
                     if (!sku || sku.trim() === '') {
                         alert('Por favor, informe o SKU do produto.');
                         valid = false;
                     }
                 }
+                // For configurable products, tab 2 is attributes (no validation needed here)
+                break;
+            case 3: // Variations (for configurable products only)
+                if (productType === '1') { // Configurable product - validate variants exist
+                    var variantCount = $('#variants-tbody tr').length;
+                    if (variantCount === 0) {
+                        alert('Por favor, gere pelo menos uma variação.');
+                        valid = false;
+                    }
+                }
+                // For simple products, tab 3 is Review (no validation needed)
                 break;
         }
 
@@ -192,16 +204,17 @@ $(document).ready(function () {
             var description = combo.map(function (c) { return c.attributeName + ': ' + c.valueName; }).join(', ');
 
             var row = $('<tr>');
-            row.append('<td><input type="text" name="Variants[' + index + '].Sku" class="form-control" value="' + sku + '" /></td>');
+            row.append('<td><input type="text" name="Variants[' + index + '].Sku" class="form-control" value="' + sku + '" required /></td>');
             row.append('<td>' + description + '</td>');
-            row.append('<td><input type="number" name="Variants[' + index + '].Cost" class="form-control" step="0.01" min="0" /></td>');
-            row.append('<td><input type="number" name="Variants[' + index + '].Weight" class="form-control" step="0.001" min="0" /></td>');
-            row.append('<td><input type="text" name="Variants[' + index + '].Barcode" class="form-control" /></td>');
-            row.append('<td><input type="checkbox" name="Variants[' + index + '].IsActive" value="true" checked /><input type="hidden" name="Variants[' + index + '].IsActive" value="false" /></td>');
+            row.append('<td><input type="text" name="Variants[' + index + '].Cost" class="form-control" placeholder="0.00" /></td>');
+            row.append('<td><input type="text" name="Variants[' + index + '].Weight" class="form-control" placeholder="0.000" /></td>');
+            row.append('<td><input type="text" name="Variants[' + index + '].Barcode" class="form-control" placeholder="EAN/GTIN" /></td>');
+            row.append('<td class="text-center"><input type="checkbox" name="Variants[' + index + '].IsActive" value="true" checked /><input type="hidden" name="Variants[' + index + '].IsActive" value="false" /></td>');
 
-            // Add hidden fields for variant attributes
-            combo.forEach(function (attr) {
-                row.append('<input type="hidden" name="Variants[' + index + '].VariantAttributeValues[' + attr.attributeId + ']" value="' + attr.valueId + '" />');
+            // Add hidden fields for variant attributes (usando lista para melhor binding)
+            combo.forEach(function (attr, attrIndex) {
+                row.append('<input type="hidden" name="Variants[' + index + '].VariantAttributeValuesList[' + attrIndex + '].AttributeId" value="' + attr.attributeId + '" />');
+                row.append('<input type="hidden" name="Variants[' + index + '].VariantAttributeValuesList[' + attrIndex + '].AttributeValueId" value="' + attr.valueId + '" />');
             });
 
             tbody.append(row);

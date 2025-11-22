@@ -22,7 +22,6 @@ namespace EntityFrameworkProject.Data
         public DbSet<ProductAttribute> ProductAttributes { get; set; }
         public DbSet<ProductAttributeValue> ProductAttributeValues { get; set; }
         public DbSet<ProductVariantAttributeValue> ProductVariantAttributeValues { get; set; }
-        public DbSet<ProductTemplateAttributeValue> ProductTemplateAttributeValues { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<ProductTemplateCategory> ProductTemplateCategories { get; set; }
         public DbSet<ProductImage> ProductImages { get; set; }
@@ -46,7 +45,6 @@ namespace EntityFrameworkProject.Data
             ConfigureProductAttribute(modelBuilder);
             ConfigureProductAttributeValue(modelBuilder);
             ConfigureProductVariantAttributeValue(modelBuilder);
-            ConfigureProductTemplateAttributeValue(modelBuilder);
             ConfigureCategory(modelBuilder);
             ConfigureProductTemplateCategory(modelBuilder);
             ConfigureProductImage(modelBuilder);
@@ -427,6 +425,12 @@ namespace EntityFrameworkProject.Data
                     .HasColumnName("slug")
                     .HasColumnType("citext");
 
+                entity.Property(e => e.ProductType)
+                    .IsRequired()
+                    .HasColumnName("product_type")
+                    .HasColumnType("smallint")
+                    .HasDefaultValue((short)0);
+
                 entity.Property(e => e.Brand)
                     .HasColumnName("brand")
                     .HasColumnType("text");
@@ -769,36 +773,6 @@ namespace EntityFrameworkProject.Data
                     .WithMany(v => v.VariantValues)
                     .HasForeignKey(e => e.AttributeValueId)
                     .HasConstraintName("product_variant_attribute_value_value_fk")
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-        }
-
-        private static void ConfigureProductTemplateAttributeValue(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<ProductTemplateAttributeValue>(entity =>
-            {
-                entity.ToTable("product_template_attribute_value");
-
-                entity.HasKey(e => new { e.ProductTemplateId, e.AttributeValueId });
-
-                entity.Property(e => e.ProductTemplateId)
-                    .HasColumnName("product_template_id")
-                    .HasColumnType("uuid");
-
-                entity.Property(e => e.AttributeValueId)
-                    .HasColumnName("attribute_value_id")
-                    .HasColumnType("uuid");
-
-                entity.HasOne(e => e.ProductTemplate)
-                    .WithMany(t => t.AttributeValues)
-                    .HasForeignKey(e => e.ProductTemplateId)
-                    .HasConstraintName("product_template_attribute_value_template_fk")
-                    .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasOne(e => e.AttributeValue)
-                    .WithMany(v => v.TemplateValues)
-                    .HasForeignKey(e => e.AttributeValueId)
-                    .HasConstraintName("product_template_attribute_value_value_fk")
                     .OnDelete(DeleteBehavior.Cascade);
             });
         }

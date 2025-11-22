@@ -47,6 +47,7 @@ namespace WebApplicationBasic.Controllers
                     Name = p.Name,
                     Slug = p.Slug,
                     Brand = p.Brand,
+                    ProductType = (ProductType)p.ProductType,
                     IsService = p.IsService,
                     IsRental = p.IsRental,
                     HasDelivery = p.HasDelivery,
@@ -135,9 +136,6 @@ namespace WebApplicationBasic.Controllers
                             .ThenInclude(av => av.Attribute)
                 .Include(p => p.Categories)
                     .ThenInclude(pc => pc.Category)
-                .Include(p => p.AttributeValues)
-                    .ThenInclude(ta => ta.AttributeValue)
-                        .ThenInclude(av => av.Attribute)
                 .FirstOrDefaultAsync(p => p.Id == id && p.OrganizationId == CurrentOrganizationId && p.DeletedAt == null);
 
             if (template == null)
@@ -145,9 +143,9 @@ namespace WebApplicationBasic.Controllers
                 return HttpNotFound();
             }
 
-            // Detectar tipo de produto baseado no número de variantes
+            // Usar o tipo de produto armazenado no banco
             var activeVariants = template.Variants.Where(v => v.DeletedAt == null).ToList();
-            var productType = activeVariants.Count > 1 ? ProductType.Configurable : ProductType.Simple;
+            var productType = (ProductType)template.ProductType;
 
             var model = new ProductFormViewModel
             {
@@ -214,6 +212,14 @@ namespace WebApplicationBasic.Controllers
                             av => av.AttributeValue.AttributeId,
                             av => av.AttributeValueId
                         ),
+                    VariantAttributeValuesList = v.AttributeValues
+                        .Where(av => av.AttributeValue != null && av.AttributeValue.Attribute != null && av.AttributeValue.Attribute.IsVariant)
+                        .Select(av => new VariantAttributeValuePair
+                        {
+                            AttributeId = av.AttributeValue.AttributeId,
+                            AttributeValueId = av.AttributeValueId
+                        })
+                        .ToList(),
                     VariantDescription = string.Join(", ", v.AttributeValues
                         .Where(av => av.AttributeValue != null && av.AttributeValue.Attribute != null && av.AttributeValue.Attribute.IsVariant)
                         .Select(av => $"{av.AttributeValue.Attribute.Name}: {av.AttributeValue.Value}")
@@ -238,14 +244,9 @@ namespace WebApplicationBasic.Controllers
                 .Where(a => a.OrganizationId == CurrentOrganizationId)
                 .ToListAsync();
 
-            // Atributos descritivos já atribuídos ao template
-            var templateAttributeValueIds = template.AttributeValues
-                .Select(av => av.AttributeValueId)
-                .ToHashSet();
-
             // Atributos de variação usados nas variantes
             var variantAttributeValueIds = new HashSet<Guid>();
-            if (model.ProductType == ProductType.Configurable && template.Variants != null)
+            if (template != null && template.Variants != null)
             {
                 foreach (var variant in template.Variants.Where(v => v.DeletedAt == null))
                 {
@@ -258,33 +259,13 @@ namespace WebApplicationBasic.Controllers
 
             if (model.ProductType == ProductType.Simple)
             {
-                // Para produtos simples, todos os atributos são descritivos
-                model.DescriptiveAttributes = attributes
-                    .Select(a => new AttributeAssignmentViewModel
-                    {
-                        AttributeId = a.Id,
-                        AttributeName = a.Name,
-                        AttributeCode = a.Code,
-                        SelectedValueIds = a.Values
-                            .Where(v => templateAttributeValueIds.Contains(v.Id))
-                            .Select(v => v.Id)
-                            .ToList(),
-                        AvailableValues = a.Values
-                            .OrderBy(v => v.SortOrder)
-                            .Select(v => new AttributeValueSelectionViewModel
-                            {
-                                Id = v.Id,
-                                Value = v.Value,
-                                SortOrder = v.SortOrder,
-                                IsSelected = templateAttributeValueIds.Contains(v.Id)
-                            })
-                            .ToList()
-                    })
-                    .ToList();
+                // Para produtos simples, não há mais atributos descritivos no template
+                // Mantendo a estrutura vazia para compatibilidade
+                model.DescriptiveAttributes = new List<AttributeAssignmentViewModel>();
             }
             else
             {
-                // Para produtos configuráveis, separar atributos de variação e descritivos
+                // Para produtos configuráveis, apenas atributos de variação
                 model.VariantAttributes = attributes
                     .Where(a => a.IsVariant)
                     .Select(a => new VariantAttributeSelectionViewModel
@@ -306,29 +287,8 @@ namespace WebApplicationBasic.Controllers
                     })
                     .ToList();
 
-                model.DescriptiveAttributes = attributes
-                    .Where(a => !a.IsVariant)
-                    .Select(a => new AttributeAssignmentViewModel
-                    {
-                        AttributeId = a.Id,
-                        AttributeName = a.Name,
-                        AttributeCode = a.Code,
-                        SelectedValueIds = a.Values
-                            .Where(v => templateAttributeValueIds.Contains(v.Id))
-                            .Select(v => v.Id)
-                            .ToList(),
-                        AvailableValues = a.Values
-                            .OrderBy(v => v.SortOrder)
-                            .Select(v => new AttributeValueSelectionViewModel
-                            {
-                                Id = v.Id,
-                                Value = v.Value,
-                                SortOrder = v.SortOrder,
-                                IsSelected = templateAttributeValueIds.Contains(v.Id)
-                            })
-                            .ToList()
-                    })
-                    .ToList();
+                // Não há mais atributos descritivos no template
+                model.DescriptiveAttributes = new List<AttributeAssignmentViewModel>();
             }
         }
 
@@ -361,7 +321,6 @@ namespace WebApplicationBasic.Controllers
                 .Include(p => p.Variants)
                     .ThenInclude(v => v.AttributeValues)
                 .Include(p => p.Categories)
-                .Include(p => p.AttributeValues)
                 .FirstOrDefaultAsync(p => p.Id == model.Id && p.OrganizationId == CurrentOrganizationId);
 
             if (template == null)
@@ -427,34 +386,6 @@ namespace WebApplicationBasic.Controllers
                                 ProductTemplateId = template.Id,
                                 CategoryId = catId
                             });
-                        }
-                    }
-                }
-
-                // Sincronizar atributos descritivos
-                var existingAttributeValues = template.AttributeValues.ToList();
-
-                // Remover atributos não mais selecionados
-                foreach (var attr in existingAttributeValues)
-                {
-                    Context.Entry(attr).State = Microsoft.EntityFrameworkCore.EntityState.Deleted;
-                }
-
-                // Adicionar novos atributos descritivos
-                if (model.DescriptiveAttributes != null)
-                {
-                    foreach (var attr in model.DescriptiveAttributes)
-                    {
-                        if (attr.SelectedValueIds != null)
-                        {
-                            foreach (var valueId in attr.SelectedValueIds)
-                            {
-                                template.AttributeValues.Add(new ProductTemplateAttributeValue
-                                {
-                                    ProductTemplateId = template.Id,
-                                    AttributeValueId = valueId
-                                });
-                            }
                         }
                     }
                 }
@@ -556,8 +487,21 @@ namespace WebApplicationBasic.Controllers
                                 };
 
                                 // Adicionar atributos de variação
-                                if (variantModel.VariantAttributeValues != null)
+                                if (variantModel.VariantAttributeValuesList != null && variantModel.VariantAttributeValuesList.Any())
                                 {
+                                    newVariant.AttributeValues = new List<ProductVariantAttributeValue>();
+                                    foreach (var attrValue in variantModel.VariantAttributeValuesList)
+                                    {
+                                        newVariant.AttributeValues.Add(new ProductVariantAttributeValue
+                                        {
+                                            VariantId = newVariant.Id,
+                                            AttributeValueId = attrValue.AttributeValueId
+                                        });
+                                    }
+                                }
+                                else if (variantModel.VariantAttributeValues != null && variantModel.VariantAttributeValues.Any())
+                                {
+                                    // Fallback para Dictionary (compatibilidade)
                                     newVariant.AttributeValues = new List<ProductVariantAttributeValue>();
                                     foreach (var kvp in variantModel.VariantAttributeValues)
                                     {
@@ -762,6 +706,7 @@ namespace WebApplicationBasic.Controllers
                     OrganizationId = CurrentOrganizationId,
                     Name = model.Name,
                     Slug = slug,
+                    ProductType = (short)model.ProductType,
                     Brand = model.Brand,
                     Description = model.Description,
                     WarrantyMonths = model.WarrantyMonths,
@@ -828,8 +773,20 @@ namespace WebApplicationBasic.Controllers
                             };
 
                             // Adicionar relações de atributos de variação
-                            if (variantModel.VariantAttributeValues != null)
+                            if (variantModel.VariantAttributeValuesList != null && variantModel.VariantAttributeValuesList.Any())
                             {
+                                variant.AttributeValues = new List<ProductVariantAttributeValue>();
+                                foreach (var attrValue in variantModel.VariantAttributeValuesList)
+                                {
+                                    variant.AttributeValues.Add(new ProductVariantAttributeValue
+                                    {
+                                        AttributeValueId = attrValue.AttributeValueId
+                                    });
+                                }
+                            }
+                            else if (variantModel.VariantAttributeValues != null && variantModel.VariantAttributeValues.Any())
+                            {
+                                // Fallback para Dictionary (compatibilidade com código antigo)
                                 variant.AttributeValues = new List<ProductVariantAttributeValue>();
                                 foreach (var kvp in variantModel.VariantAttributeValues)
                                 {
@@ -865,25 +822,6 @@ namespace WebApplicationBasic.Controllers
                         {
                             CategoryId = categoryId
                         });
-                    }
-                }
-
-                // Adicionar atributos descritivos
-                if (model.DescriptiveAttributes != null)
-                {
-                    template.AttributeValues = new List<ProductTemplateAttributeValue>();
-                    foreach (var attr in model.DescriptiveAttributes)
-                    {
-                        if (attr.SelectedValueIds != null)
-                        {
-                            foreach (var valueId in attr.SelectedValueIds)
-                            {
-                                template.AttributeValues.Add(new ProductTemplateAttributeValue
-                                {
-                                    AttributeValueId = valueId
-                                });
-                            }
-                        }
                     }
                 }
 
@@ -1262,29 +1200,13 @@ namespace WebApplicationBasic.Controllers
 
             if (model.ProductType == ProductType.Simple)
             {
-                // Para produtos simples, todos os atributos são descritivos
-                model.DescriptiveAttributes = attributes
-                    .Select(a => new AttributeAssignmentViewModel
-                    {
-                        AttributeId = a.Id,
-                        AttributeName = a.Name,
-                        AttributeCode = a.Code,
-                        AvailableValues = a.Values
-                            .OrderBy(v => v.SortOrder)
-                            .Select(v => new AttributeValueSelectionViewModel
-                            {
-                                Id = v.Id,
-                                Value = v.Value,
-                                SortOrder = v.SortOrder,
-                                IsSelected = false
-                            })
-                            .ToList()
-                    })
-                    .ToList();
+                // Para produtos simples, não há atributos no template (SPU)
+                // Atributos são definidos diretamente nas variantes (SKU)
+                model.DescriptiveAttributes = new List<AttributeAssignmentViewModel>();
             }
             else
             {
-                // Para produtos configuráveis, separar atributos de variação e descritivos
+                // Para produtos configuráveis, apenas atributos de variação
                 model.VariantAttributes = attributes
                     .Where(a => a.IsVariant)
                     .Select(a => new VariantAttributeSelectionViewModel
@@ -1306,25 +1228,8 @@ namespace WebApplicationBasic.Controllers
                     })
                     .ToList();
 
-                model.DescriptiveAttributes = attributes
-                    .Where(a => !a.IsVariant)
-                    .Select(a => new AttributeAssignmentViewModel
-                    {
-                        AttributeId = a.Id,
-                        AttributeName = a.Name,
-                        AttributeCode = a.Code,
-                        AvailableValues = a.Values
-                            .OrderBy(v => v.SortOrder)
-                            .Select(v => new AttributeValueSelectionViewModel
-                            {
-                                Id = v.Id,
-                                Value = v.Value,
-                                SortOrder = v.SortOrder,
-                                IsSelected = false
-                            })
-                            .ToList()
-                    })
-                    .ToList();
+                // Não há mais atributos descritivos no template
+                model.DescriptiveAttributes = new List<AttributeAssignmentViewModel>();
             }
         }
 
