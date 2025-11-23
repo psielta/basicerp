@@ -35,6 +35,7 @@ namespace WebApplicationBasic.App_Start
             services.AddTransient<IAuthenticationService, AuthenticationService>();
             services.AddTransient<IStorageService, MinIOStorageService>();
             services.AddTransient<IImageProcessingService, ImageProcessingService>();
+            services.AddTransient<IStockService, StockService>();
 
             // Registrar controllers
             services.AddTransient<WebApplicationBasic.Controllers.HomeController>();
@@ -43,6 +44,7 @@ namespace WebApplicationBasic.App_Start
             services.AddTransient<WebApplicationBasic.Controllers.ProductsController>();
             services.AddTransient<WebApplicationBasic.Controllers.CategoriesController>();
             services.AddTransient<WebApplicationBasic.Controllers.ProductAttributesController>();
+            services.AddTransient<WebApplicationBasic.Controllers.StockController>();
 
             _serviceProvider = services.BuildServiceProvider();
 

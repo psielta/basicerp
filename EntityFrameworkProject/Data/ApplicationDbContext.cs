@@ -25,6 +25,11 @@ namespace EntityFrameworkProject.Data
         public DbSet<Category> Categories { get; set; }
         public DbSet<ProductTemplateCategory> ProductTemplateCategories { get; set; }
         public DbSet<ProductImage> ProductImages { get; set; }
+        public DbSet<StockLocation> StockLocations { get; set; }
+        public DbSet<StockBalance> StockBalances { get; set; }
+        public DbSet<StockLedger> StockLedgers { get; set; }
+        public DbSet<StockReservation> StockReservations { get; set; }
+        public DbSet<StockOutboxEvent> StockOutboxEvents { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -48,6 +53,11 @@ namespace EntityFrameworkProject.Data
             ConfigureCategory(modelBuilder);
             ConfigureProductTemplateCategory(modelBuilder);
             ConfigureProductImage(modelBuilder);
+            ConfigureStockLocation(modelBuilder);
+            ConfigureStockBalance(modelBuilder);
+            ConfigureStockLedger(modelBuilder);
+            ConfigureStockReservation(modelBuilder);
+            ConfigureStockOutboxEvent(modelBuilder);
         }
 
         private static void ConfigureOrganization(ModelBuilder modelBuilder)
@@ -950,6 +960,486 @@ namespace EntityFrameworkProject.Data
                     .IsUnique()
                     .HasFilter("is_main = true AND variant_id IS NULL")
                     .HasName("ux_product_image_main_template");
+            });
+        }
+
+        private static void ConfigureStockLocation(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<StockLocation>(entity =>
+            {
+                entity.ToTable("stock_location");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                    .HasColumnName("id")
+                    .HasColumnType("uuid")
+                    .HasDefaultValueSql("uuid_generate_v4()");
+
+                entity.Property(e => e.OrganizationId)
+                    .IsRequired()
+                    .HasColumnName("organization_id")
+                    .HasColumnType("uuid");
+
+                entity.Property(e => e.Code)
+                    .IsRequired()
+                    .HasColumnName("code")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasColumnName("name")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.Description)
+                    .HasColumnName("description")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.IsVirtual)
+                    .IsRequired()
+                    .HasColumnName("is_virtual")
+                    .HasColumnType("boolean")
+                    .HasDefaultValue(false);
+
+                entity.Property(e => e.IsDefault)
+                    .IsRequired()
+                    .HasColumnName("is_default")
+                    .HasColumnType("boolean")
+                    .HasDefaultValue(false);
+
+                entity.Property(e => e.IsActive)
+                    .IsRequired()
+                    .HasColumnName("is_active")
+                    .HasColumnType("boolean")
+                    .HasDefaultValue(true);
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasColumnName("created_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("now()");
+
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasColumnName("updated_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("now()");
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany()
+                    .HasForeignKey(e => e.OrganizationId)
+                    .HasConstraintName("stock_location_org_fk")
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.OrganizationId, e.Code })
+                    .IsUnique()
+                    .HasName("ux_stock_location_org_code");
+
+                entity.HasIndex(e => e.OrganizationId)
+                    .HasFilter("is_default = true")
+                    .IsUnique()
+                    .HasName("ux_stock_location_org_default");
+            });
+        }
+
+        private static void ConfigureStockBalance(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<StockBalance>(entity =>
+            {
+                entity.ToTable("stock_balance");
+
+                entity.HasKey(e => new { e.OrganizationId, e.LocationId, e.VariantId });
+
+                entity.Property(e => e.OrganizationId)
+                    .HasColumnName("organization_id")
+                    .HasColumnType("uuid");
+
+                entity.Property(e => e.LocationId)
+                    .HasColumnName("location_id")
+                    .HasColumnType("uuid");
+
+                entity.Property(e => e.VariantId)
+                    .HasColumnName("variant_id")
+                    .HasColumnType("uuid");
+
+                entity.Property(e => e.OnHand)
+                    .IsRequired()
+                    .HasColumnName("on_hand")
+                    .HasColumnType("numeric(18,3)")
+                    .HasDefaultValue(0);
+
+                entity.Property(e => e.Reserved)
+                    .IsRequired()
+                    .HasColumnName("reserved")
+                    .HasColumnType("numeric(18,3)")
+                    .HasDefaultValue(0);
+
+                entity.Property(e => e.LastMovementAt)
+                    .IsRequired()
+                    .HasColumnName("last_movement_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("now()");
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasColumnName("created_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("now()");
+
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasColumnName("updated_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("now()");
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany()
+                    .HasForeignKey(e => e.OrganizationId)
+                    .HasConstraintName("stock_balance_org_fk")
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Location)
+                    .WithMany()
+                    .HasForeignKey(e => e.LocationId)
+                    .HasConstraintName("stock_balance_location_fk")
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Variant)
+                    .WithMany()
+                    .HasForeignKey(e => e.VariantId)
+                    .HasConstraintName("stock_balance_variant_fk")
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.VariantId)
+                    .HasName("ix_stock_balance_variant");
+
+                entity.HasIndex(e => e.LocationId)
+                    .HasName("ix_stock_balance_location");
+
+                entity.HasIndex(e => new { e.OrganizationId, e.VariantId })
+                    .HasName("ix_stock_balance_org_variant");
+
+                entity.HasCheckConstraint("stock_balance_non_negative", "on_hand >= 0 AND reserved >= 0 AND on_hand >= reserved");
+            });
+        }
+
+        private static void ConfigureStockLedger(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<StockLedger>(entity =>
+            {
+                entity.ToTable("stock_ledger");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                    .HasColumnName("id")
+                    .HasColumnType("uuid")
+                    .HasDefaultValueSql("uuid_generate_v4()");
+
+                entity.Property(e => e.OrganizationId)
+                    .IsRequired()
+                    .HasColumnName("organization_id")
+                    .HasColumnType("uuid");
+
+                entity.Property(e => e.LocationId)
+                    .IsRequired()
+                    .HasColumnName("location_id")
+                    .HasColumnType("uuid");
+
+                entity.Property(e => e.VariantId)
+                    .IsRequired()
+                    .HasColumnName("variant_id")
+                    .HasColumnType("uuid");
+
+                entity.Property(e => e.DeltaOnHand)
+                    .HasColumnName("delta_on_hand")
+                    .HasColumnType("numeric(18,3)")
+                    .HasDefaultValue(0);
+
+                entity.Property(e => e.DeltaReserved)
+                    .HasColumnName("delta_reserved")
+                    .HasColumnType("numeric(18,3)")
+                    .HasDefaultValue(0);
+
+                entity.Property(e => e.MovementType)
+                    .IsRequired()
+                    .HasColumnName("movement_type")
+                    .HasColumnType("smallint");
+
+                entity.Property(e => e.Reason)
+                    .HasColumnName("reason")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.SourceType)
+                    .HasColumnName("source_type")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.SourceId)
+                    .HasColumnName("source_id")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.SourceLine)
+                    .HasColumnName("source_line")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.DeduplicationKey)
+                    .IsRequired()
+                    .HasColumnName("deduplication_key")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.OccurredAt)
+                    .IsRequired()
+                    .HasColumnName("occurred_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("now()");
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasColumnName("created_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("now()");
+
+                entity.Property(e => e.Metadata)
+                    .IsRequired()
+                    .HasColumnName("metadata")
+                    .HasColumnType("jsonb")
+                    .HasDefaultValueSql("'{}'::jsonb");
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany()
+                    .HasForeignKey(e => e.OrganizationId)
+                    .HasConstraintName("stock_ledger_org_fk")
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Location)
+                    .WithMany()
+                    .HasForeignKey(e => e.LocationId)
+                    .HasConstraintName("stock_ledger_location_fk")
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Variant)
+                    .WithMany()
+                    .HasForeignKey(e => e.VariantId)
+                    .HasConstraintName("stock_ledger_variant_fk")
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.OrganizationId, e.DeduplicationKey })
+                    .IsUnique()
+                    .HasName("ux_stock_ledger_org_dedup");
+
+                entity.HasIndex(e => new { e.VariantId, e.OccurredAt })
+                    .HasName("ix_stock_ledger_variant_date");
+
+                entity.HasIndex(e => new { e.LocationId, e.OccurredAt })
+                    .HasName("ix_stock_ledger_location_date");
+
+                entity.HasIndex(e => new { e.OrganizationId, e.OccurredAt })
+                    .HasName("ix_stock_ledger_org_date");
+
+                entity.HasCheckConstraint("stock_ledger_non_zero_delta", "delta_on_hand <> 0 OR delta_reserved <> 0");
+            });
+        }
+
+        private static void ConfigureStockReservation(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<StockReservation>(entity =>
+            {
+                entity.ToTable("stock_reservation");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                    .HasColumnName("id")
+                    .HasColumnType("uuid")
+                    .HasDefaultValueSql("uuid_generate_v4()");
+
+                entity.Property(e => e.OrganizationId)
+                    .IsRequired()
+                    .HasColumnName("organization_id")
+                    .HasColumnType("uuid");
+
+                entity.Property(e => e.LocationId)
+                    .IsRequired()
+                    .HasColumnName("location_id")
+                    .HasColumnType("uuid");
+
+                entity.Property(e => e.VariantId)
+                    .IsRequired()
+                    .HasColumnName("variant_id")
+                    .HasColumnType("uuid");
+
+                entity.Property(e => e.Quantity)
+                    .IsRequired()
+                    .HasColumnName("quantity")
+                    .HasColumnType("numeric(18,3)");
+
+                entity.Property(e => e.Status)
+                    .IsRequired()
+                    .HasColumnName("status")
+                    .HasColumnType("smallint");
+
+                entity.Property(e => e.ReservedAt)
+                    .IsRequired()
+                    .HasColumnName("reserved_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("now()");
+
+                entity.Property(e => e.ExpiresAt)
+                    .HasColumnName("expires_at")
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(e => e.SourceType)
+                    .HasColumnName("source_type")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.SourceId)
+                    .HasColumnName("source_id")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.SourceLine)
+                    .HasColumnName("source_line")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.DeduplicationKey)
+                    .IsRequired()
+                    .HasColumnName("deduplication_key")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasColumnName("created_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("now()");
+
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasColumnName("updated_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("now()");
+
+                entity.Property(e => e.Metadata)
+                    .IsRequired()
+                    .HasColumnName("metadata")
+                    .HasColumnType("jsonb")
+                    .HasDefaultValueSql("'{}'::jsonb");
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany()
+                    .HasForeignKey(e => e.OrganizationId)
+                    .HasConstraintName("stock_reservation_org_fk")
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Location)
+                    .WithMany()
+                    .HasForeignKey(e => e.LocationId)
+                    .HasConstraintName("stock_reservation_location_fk")
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Variant)
+                    .WithMany()
+                    .HasForeignKey(e => e.VariantId)
+                    .HasConstraintName("stock_reservation_variant_fk")
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.OrganizationId, e.DeduplicationKey })
+                    .IsUnique()
+                    .HasName("ux_stock_reservation_org_dedup");
+
+                entity.HasIndex(e => new { e.VariantId, e.Status })
+                    .HasName("ix_stock_reservation_variant_status");
+
+                entity.HasIndex(e => new { e.SourceType, e.SourceId })
+                    .HasName("ix_stock_reservation_source");
+
+                entity.HasCheckConstraint("stock_reservation_quantity_positive", "quantity > 0");
+            });
+        }
+
+        private static void ConfigureStockOutboxEvent(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<StockOutboxEvent>(entity =>
+            {
+                entity.ToTable("stock_outbox_event");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                    .HasColumnName("id")
+                    .HasColumnType("uuid")
+                    .HasDefaultValueSql("uuid_generate_v4()");
+
+                entity.Property(e => e.OrganizationId)
+                    .HasColumnName("organization_id")
+                    .HasColumnType("uuid");
+
+                entity.Property(e => e.AggregateType)
+                    .IsRequired()
+                    .HasColumnName("aggregate_type")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.AggregateId)
+                    .HasColumnName("aggregate_id")
+                    .HasColumnType("uuid");
+
+                entity.Property(e => e.EventType)
+                    .IsRequired()
+                    .HasColumnName("event_type")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.Payload)
+                    .IsRequired()
+                    .HasColumnName("payload")
+                    .HasColumnType("jsonb");
+
+                entity.Property(e => e.Topic)
+                    .HasColumnName("topic")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.Key)
+                    .HasColumnName("key")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.OccurredAt)
+                    .IsRequired()
+                    .HasColumnName("occurred_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("now()");
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasColumnName("created_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("now()");
+
+                entity.Property(e => e.PublishedAt)
+                    .HasColumnName("published_at")
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(e => e.Status)
+                    .IsRequired()
+                    .HasColumnName("status")
+                    .HasColumnType("smallint")
+                    .HasDefaultValue((short)0);
+
+                entity.Property(e => e.Error)
+                    .HasColumnName("error")
+                    .HasColumnType("text");
+
+                entity.Property(e => e.TraceId)
+                    .HasColumnName("trace_id")
+                    .HasColumnType("text");
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany()
+                    .HasForeignKey(e => e.OrganizationId)
+                    .HasConstraintName("stock_outbox_event_org_fk")
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.Status, e.CreatedAt })
+                    .HasName("ix_stock_outbox_status_created");
+
+                entity.HasIndex(e => e.OrganizationId)
+                    .HasName("ix_stock_outbox_org");
             });
         }
     }

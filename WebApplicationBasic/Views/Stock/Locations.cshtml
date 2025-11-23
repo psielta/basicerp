@@ -1,0 +1,103 @@
+﻿@using System.Linq
+@model WebApplicationBasic.Models.ViewModels.StockLocationFormViewModel
+
+@{
+    ViewBag.Title = "Locais de estoque";
+    var locations = ViewBag.Locations as IEnumerable<EntityFrameworkProject.Models.StockLocation> ?? Enumerable.Empty<EntityFrameworkProject.Models.StockLocation>();
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<h2>Locais de estoque</h2>
+<p class="text-muted">Defina almoxarifados, lojas ou locais virtuais para organizar o saldo.</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <h4>Novo local</h4>
+        @using (Html.BeginForm("CreateLocation", "Stock", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+            <div class="mb-3">
+                @Html.LabelFor(m => m.Code, new { @class = "form-label" })
+                @Html.TextBoxFor(m => m.Code, new { @class = "form-control" })
+                @Html.ValidationMessageFor(m => m.Code, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="mb-3">
+                @Html.LabelFor(m => m.Name, new { @class = "form-label" })
+                @Html.TextBoxFor(m => m.Name, new { @class = "form-control" })
+                @Html.ValidationMessageFor(m => m.Name, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="mb-3">
+                @Html.LabelFor(m => m.Description, new { @class = "form-label" })
+                @Html.TextAreaFor(m => m.Description, new { @class = "form-control", rows = 2 })
+            </div>
+
+            <div class="form-check">
+                @Html.CheckBoxFor(m => m.IsVirtual, new { @class = "form-check-input" })
+                @Html.LabelFor(m => m.IsVirtual, new { @class = "form-check-label" })
+            </div>
+            <div class="form-check">
+                @Html.CheckBoxFor(m => m.IsDefault, new { @class = "form-check-input" })
+                @Html.LabelFor(m => m.IsDefault, new { @class = "form-check-label" })
+            </div>
+            <div class="form-check mb-3">
+                @Html.CheckBoxFor(m => m.IsActive, new { @class = "form-check-input" })
+                @Html.LabelFor(m => m.IsActive, new { @class = "form-check-label" })
+            </div>
+
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            @Html.ActionLink("Voltar", "Index", null, new { @class = "btn btn-secondary" })
+        }
+    </div>
+
+    <div class="col-md-6">
+        <h4>Locais existentes</h4>
+        <table class="table table-sm table-bordered">
+            <thead>
+                <tr>
+                    <th>Codigo</th>
+                    <th>Nome</th>
+                    <th>Padrao</th>
+                    <th>Ativo</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!locations.Any())
+                {
+                    <tr><td colspan="5" class="text-center">Nenhum local cadastrado.</td></tr>
+                }
+                else
+                {
+                    foreach (var loc in locations)
+                    {
+                        <tr>
+                            <td>@loc.Code</td>
+                            <td>@loc.Name</td>
+                            <td>@(loc.IsDefault ? "Sim" : "Nao")</td>
+                            <td>@(loc.IsActive ? "Sim" : "Nao")</td>
+                            <td class="text-end">
+                                @Html.ActionLink("Editar", "EditLocation", new { id = loc.Id }, new { @class = "btn btn-sm btn-outline-secondary" })
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}

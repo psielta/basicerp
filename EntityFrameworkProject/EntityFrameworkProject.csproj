@@ -166,6 +166,10 @@
     <Compile Include="Migrations\20251123141537_RemoveIsVariant.Designer.cs">
       <DependentUpon>20251123141537_RemoveIsVariant.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\20251123163458_Estoque.cs" />
+    <Compile Include="Migrations\20251123163458_Estoque.Designer.cs">
+      <DependentUpon>20251123163458_Estoque.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\ApplicationDbContextModelSnapshot.cs" />
     <Compile Include="Models\Account.cs" />
     <Compile Include="Models\Category.cs" />
@@ -178,6 +182,12 @@
     <Compile Include="Models\ProductTemplateCategory.cs" />
     <Compile Include="Models\ProductVariant.cs" />
     <Compile Include="Models\ProductVariantAttributeValue.cs" />
+    <Compile Include="Models\StockBalance.cs" />
+    <Compile Include="Models\StockEnums.cs" />
+    <Compile Include="Models\StockLedger.cs" />
+    <Compile Include="Models\StockLocation.cs" />
+    <Compile Include="Models\StockOutboxEvent.cs" />
+    <Compile Include="Models\StockReservation.cs" />
     <Compile Include="Models\Session.cs" />
     <Compile Include="Models\User.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

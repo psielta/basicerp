@@ -248,6 +248,12 @@
                     <span>Categorias</span>
                 </a>
             </li>
+            <li>
+                <a href="@Url.Action("Index", "Stock")" class="@(ViewContext.RouteData.Values["controller"].ToString() == "Stock" ? "active" : "")">
+                    <i class="bi bi-clipboard-data"></i>
+                    <span>Estoque</span>
+                </a>
+            </li>
         </ul>
     </aside>
 

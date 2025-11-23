@@ -1,0 +1,72 @@
+﻿@using EntityFrameworkProject.Models
+@model WebApplicationBasic.Models.ViewModels.StockMovementFormViewModel
+
+@{
+    var title = ViewBag.Title as string ?? "Movimentacao de estoque";
+    var quantityLabel = Model.MovementType == StockMovementType.StockAdjusted ? "Novo saldo fisico" : "Quantidade";
+    ViewBag.Title = title;
+}
+
+<h2>@title</h2>
+
+@Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+        @Html.LabelFor(m => m.VariantId, new { @class = "form-label" })
+        @Html.DropDownListFor(m => m.VariantId, new SelectList(Model.Variants, "Id", "Display", Model.VariantId), "Selecione o SKU", new { @class = "form-control" })
+        @Html.ValidationMessageFor(m => m.VariantId, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="mb-3">
+        @Html.LabelFor(m => m.LocationId, new { @class = "form-label" })
+        @Html.DropDownListFor(m => m.LocationId, new SelectList(Model.Locations, "Id", "Display", Model.LocationId), "Selecione o local", new { @class = "form-control" })
+        @Html.ValidationMessageFor(m => m.LocationId, "", new { @class = "text-danger" })
+    </div>
+
+    if (Model.MovementType == StockMovementType.StockTransferredOut)
+    {
+        <div class="mb-3">
+            @Html.LabelFor(m => m.TargetLocationId, "Local de destino", new { @class = "form-label" })
+            @Html.DropDownListFor(m => m.TargetLocationId, new SelectList(Model.Locations, "Id", "Display", Model.TargetLocationId), "Selecione o destino", new { @class = "form-control" })
+            @Html.ValidationMessageFor(m => m.TargetLocationId, "", new { @class = "text-danger" })
+        </div>
+    }
+
+    <div class="mb-3">
+        @Html.LabelFor(m => m.Quantity, quantityLabel, new { @class = "form-label" })
+        @Html.TextBoxFor(m => m.Quantity, new { @class = "form-control", type = "number", step = "0.001", min = "0" })
+        @Html.ValidationMessageFor(m => m.Quantity, "", new { @class = "text-danger" })
+    </div>
+
+    if (Model.MovementType == StockMovementType.StockReserved)
+    {
+        <div class="mb-3">
+            @Html.LabelFor(m => m.ExpiresAt, "Validade da reserva (opcional)", new { @class = "form-label" })
+            @Html.TextBoxFor(m => m.ExpiresAt, new { @class = "form-control", type = "datetime-local" })
+        </div>
+    }
+
+    if (Model.MovementType == StockMovementType.StockShipped)
+    {
+        <div class="mb-3">
+            @Html.LabelFor(m => m.ReservationId, "Reserva (opcional)", new { @class = "form-label" })
+            @Html.TextBoxFor(m => m.ReservationId, new { @class = "form-control", placeholder = "Informe o ID da reserva, se aplicavel" })
+        </div>
+    }
+
+    <div class="mb-3">
+        @Html.LabelFor(m => m.Reason, new { @class = "form-label" })
+        @Html.TextBoxFor(m => m.Reason, new { @class = "form-control", placeholder = "Opcional" })
+    </div>
+
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    @Html.ActionLink("Cancelar", "Index", null, new { @class = "btn btn-secondary" })
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
