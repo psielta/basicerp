@@ -9,7 +9,6 @@ namespace WebApplicationBasic.Models.ViewModels
         public Guid Id { get; set; }
         public string Name { get; set; }
         public string Code { get; set; }
-        public bool IsVariant { get; set; }
         public int ValuesCount { get; set; }
         public DateTime CreatedAt { get; set; }
     }
@@ -39,9 +38,6 @@ namespace WebApplicationBasic.Models.ViewModels
         // Code será gerenciado automaticamente a partir do nome
         [StringLength(200, ErrorMessage = "O código deve ter no máximo {1} caracteres")]
         public string Code { get; set; }
-
-        [Display(Name = "Usar em variações (SKU)")]
-        public bool IsVariant { get; set; }
 
         public IList<ProductAttributeValueItemViewModel> Values { get; set; } = new List<ProductAttributeValueItemViewModel>();
     }

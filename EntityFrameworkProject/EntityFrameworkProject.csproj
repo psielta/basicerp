@@ -162,6 +162,10 @@
     <Compile Include="Migrations\20251122231603_AddProductTypeToTemplate.Designer.cs">
       <DependentUpon>20251122231603_AddProductTypeToTemplate.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\20251123141537_RemoveIsVariant.cs" />
+    <Compile Include="Migrations\20251123141537_RemoveIsVariant.Designer.cs">
+      <DependentUpon>20251123141537_RemoveIsVariant.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\ApplicationDbContextModelSnapshot.cs" />
     <Compile Include="Models\Account.cs" />
     <Compile Include="Models\Category.cs" />

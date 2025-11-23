@@ -207,13 +207,13 @@ namespace WebApplicationBasic.Controllers
                     Barcode = v.Barcode,
                     IsActive = v.IsActive,
                     VariantAttributeValues = v.AttributeValues
-                        .Where(av => av.AttributeValue != null && av.AttributeValue.Attribute != null && av.AttributeValue.Attribute.IsVariant)
+                        .Where(av => av.AttributeValue != null && av.AttributeValue.Attribute != null)
                         .ToDictionary(
                             av => av.AttributeValue.AttributeId,
                             av => av.AttributeValueId
                         ),
                     VariantAttributeValuesList = v.AttributeValues
-                        .Where(av => av.AttributeValue != null && av.AttributeValue.Attribute != null && av.AttributeValue.Attribute.IsVariant)
+                        .Where(av => av.AttributeValue != null && av.AttributeValue.Attribute != null)
                         .Select(av => new VariantAttributeValuePair
                         {
                             AttributeId = av.AttributeValue.AttributeId,
@@ -221,7 +221,7 @@ namespace WebApplicationBasic.Controllers
                         })
                         .ToList(),
                     VariantDescription = string.Join(", ", v.AttributeValues
-                        .Where(av => av.AttributeValue != null && av.AttributeValue.Attribute != null && av.AttributeValue.Attribute.IsVariant)
+                        .Where(av => av.AttributeValue != null && av.AttributeValue.Attribute != null)
                         .Select(av => $"{av.AttributeValue.Attribute.Name}: {av.AttributeValue.Value}")
                     )
                 }).ToList();
@@ -267,7 +267,6 @@ namespace WebApplicationBasic.Controllers
             {
                 // Para produtos configuráveis, apenas atributos de variação
                 model.VariantAttributes = attributes
-                    .Where(a => a.IsVariant)
                     .Select(a => new VariantAttributeSelectionViewModel
                     {
                         AttributeId = a.Id,
@@ -881,7 +880,7 @@ namespace WebApplicationBasic.Controllers
                         CreatedAt = v.CreatedAt,
                         UpdatedAt = v.UpdatedAt,
                         AttributeValues = v.AttributeValues
-                            .Where(av => av.AttributeValue.Attribute.IsVariant)
+                            .Where(av => av.AttributeValue != null && av.AttributeValue.Attribute != null)
                             .ToDictionary(
                                 av => av.AttributeValue.Attribute.Name,
                                 av => av.AttributeValue.Value
@@ -960,7 +959,7 @@ namespace WebApplicationBasic.Controllers
                 Barcode = variant.Barcode,
                 IsActive = variant.IsActive,
                 VariantAttributes = variant.AttributeValues
-                    .Where(av => av.AttributeValue.Attribute.IsVariant)
+                    .Where(av => av.AttributeValue != null && av.AttributeValue.Attribute != null)
                     .ToDictionary(
                         av => av.AttributeValue.Attribute.Name,
                         av => av.AttributeValue.Value
@@ -1047,7 +1046,7 @@ namespace WebApplicationBasic.Controllers
             // Carregar atributos de variação disponíveis
             var variantAttributes = await Context.ProductAttributes
                 .Include(a => a.Values)
-                .Where(a => a.OrganizationId == CurrentOrganizationId && a.IsVariant)
+                .Where(a => a.OrganizationId == CurrentOrganizationId)
                 .Select(a => new VariantAttributeSelectionViewModel
                 {
                     AttributeId = a.Id,
@@ -1093,7 +1092,7 @@ namespace WebApplicationBasic.Controllers
                 // Recarregar atributos de variação
                 var variantAttributes = await Context.ProductAttributes
                     .Include(a => a.Values)
-                    .Where(a => a.OrganizationId == CurrentOrganizationId && a.IsVariant)
+                    .Where(a => a.OrganizationId == CurrentOrganizationId)
                     .Select(a => new VariantAttributeSelectionViewModel
                     {
                         AttributeId = a.Id,
@@ -1208,7 +1207,6 @@ namespace WebApplicationBasic.Controllers
             {
                 // Para produtos configuráveis, apenas atributos de variação
                 model.VariantAttributes = attributes
-                    .Where(a => a.IsVariant)
                     .Select(a => new VariantAttributeSelectionViewModel
                     {
                         AttributeId = a.Id,

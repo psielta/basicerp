@@ -658,12 +658,6 @@ namespace EntityFrameworkProject.Data
                     .HasColumnName("code")
                     .HasColumnType("text");
 
-                entity.Property(e => e.IsVariant)
-                    .IsRequired()
-                    .HasColumnName("is_variant")
-                    .HasColumnType("boolean")
-                    .HasDefaultValue(false);
-
                 entity.Property(e => e.CreatedAt)
                     .IsRequired()
                     .HasColumnName("created_at")

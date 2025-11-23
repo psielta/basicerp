@@ -8,7 +8,7 @@
 
 <div class="alert alert-warning">
     Tem certeza que deseja excluir o atributo abaixo? Valores e vínculos com produtos/variações serão removidos.
-</div>
+    </div>
 
 <dl class="dl-horizontal">
     <dt>Nome</dt>
@@ -16,9 +16,6 @@
 
     <dt>Código</dt>
     <dd>@Model.Code</dd>
-
-    <dt>Tipo</dt>
-    <dd>@(Model.IsVariant ? "Variação (SKU)" : "Descritivo")</dd>
 
     <dt>Qtd. Valores</dt>
     <dd>@Model.ValuesCount</dd>
@@ -32,4 +29,3 @@
     <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>
     @Html.ActionLink("Cancelar", "Index", null, new { @class = "btn btn-secondary" })
 }
-

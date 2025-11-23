@@ -31,7 +31,6 @@ namespace WebApplicationBasic.Controllers
                     Id = a.Id,
                     Name = a.Name,
                     Code = a.Code,
-                    IsVariant = a.IsVariant,
                     ValuesCount = a.Values.Count,
                     CreatedAt = a.CreatedAt
                 })
@@ -50,7 +49,6 @@ namespace WebApplicationBasic.Controllers
 
             return View(new ProductAttributeFormViewModel
             {
-                IsVariant = true,
                 Values = new List<ProductAttributeValueItemViewModel>()
             });
         }
@@ -120,7 +118,6 @@ namespace WebApplicationBasic.Controllers
                 OrganizationId = CurrentOrganizationId,
                 Name = model.Name,
                 Code = code,
-                IsVariant = model.IsVariant,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 Values = new List<ProductAttributeValue>()
@@ -168,7 +165,6 @@ namespace WebApplicationBasic.Controllers
                 Id = attribute.Id,
                 Name = attribute.Name,
                 Code = attribute.Code,
-                IsVariant = attribute.IsVariant,
                 Values = attribute.Values
                     .OrderBy(v => v.SortOrder)
                     .ThenBy(v => v.Value)
@@ -255,7 +251,6 @@ namespace WebApplicationBasic.Controllers
 
             attribute.Name = model.Name;
             attribute.Code = code;
-            attribute.IsVariant = model.IsVariant;
             attribute.UpdatedAt = DateTime.UtcNow;
 
             var existing = attribute.Values.ToDictionary(v => v.Id, v => v);
@@ -325,7 +320,6 @@ namespace WebApplicationBasic.Controllers
                 Id = attribute.Id,
                 Name = attribute.Name,
                 Code = attribute.Code,
-                IsVariant = attribute.IsVariant,
                 ValuesCount = attribute.Values.Count,
                 CreatedAt = attribute.CreatedAt
             };
@@ -385,4 +379,3 @@ namespace WebApplicationBasic.Controllers
         }
     }
 }
-

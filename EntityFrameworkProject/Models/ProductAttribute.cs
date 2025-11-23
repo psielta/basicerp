@@ -24,9 +24,6 @@ namespace EntityFrameworkProject.Models
         [Column("code")]
         public string Code { get; set; }
 
-        [Column("is_variant")]
-        public bool IsVariant { get; set; }
-
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 
@@ -38,4 +35,3 @@ namespace EntityFrameworkProject.Models
         public ICollection<ProductAttributeValue> Values { get; set; }
     }
 }
-

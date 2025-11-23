@@ -24,7 +24,6 @@
         <tr>
             <th>Nome</th>
             <th>Código</th>
-            <th>Tipo</th>
             <th>Qtd. Valores</th>
             <th>Criado em</th>
             <th></th>
@@ -34,7 +33,7 @@
         @if (!Model.Any())
         {
             <tr>
-                <td colspan="6" class="text-center">Nenhum atributo cadastrado.</td>
+                <td colspan="5" class="text-center">Nenhum atributo cadastrado.</td>
             </tr>
         }
         else
@@ -44,7 +43,6 @@
                 <tr>
                     <td>@item.Name</td>
                     <td>@item.Code</td>
-                    <td>@(item.IsVariant ? "Variação (SKU)" : "Descritivo")</td>
                     <td>@item.ValuesCount</td>
                     <td>@item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                     <td class="text-end">
@@ -56,4 +54,3 @@
         }
     </tbody>
 </table>
-

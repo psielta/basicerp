@@ -86,10 +86,9 @@ namespace WebApplicationBasic.Controllers
                     var totalAttributes = Context.ProductAttributes
                         .Count(a => a.OrganizationId == CurrentOrganizationId);
 
-                    var variantAttributes = Context.ProductAttributes
-                        .Count(a => a.OrganizationId == CurrentOrganizationId && a.IsVariant);
-
-                    var descriptiveAttributes = totalAttributes - variantAttributes;
+                    // Todos os atributos são de variação (SKU)
+                    var variantAttributes = totalAttributes;
+                    var descriptiveAttributes = 0;
 
                     ViewBag.TotalAttributes = totalAttributes;
                     ViewBag.VariantAttributes = variantAttributes;
