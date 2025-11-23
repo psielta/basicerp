@@ -330,6 +330,89 @@ SELECT * FROM session;
 - [ ] Testes unitários/integrados
 - [ ] CI/CD com GitHub Actions
 
+## Modulo de Estoque
+
+O sistema possui um modulo de estoque baseado em eventos, multi-tenant e focado em SKUs (`product_variant`), com as seguintes pecas principais:
+
+- **Locais de Estoque (`stock_location`)**
+  - Cada organizacao pode ter varios locais (almoxarifados, lojas, locais virtuais).
+  - Campos principais: `code`, `name`, `is_default`, `is_virtual`, `is_active`.
+  - Tela em **Estoque > Locais** para criar/editar locais.
+
+- **Saldo de Estoque (`stock_balance`)**
+  - Projecao atual de saldo por `organization_id` + `location_id` + `variant_id`.
+  - Campos: `on_hand` (fisico), `reserved` (reservado), `last_movement_at`.
+  - Constraint garante que `on_hand >= reserved` e nunca negativo.
+
+- **Livro-Razao (`stock_ledger`)**
+  - Cada movimentacao gera um evento com `delta_on_hand` e `delta_reserved`.
+  - Tipos de movimento (enum `StockMovementType`):
+    - `StockReceived` (entrada)
+    - `StockReserved` (reserva)
+    - `StockReleased` (liberacao de reserva)
+    - `StockShipped` (saida/baixa)
+    - `StockAdjusted` (ajuste de inventario)
+    - `StockTransferredOut` / `StockTransferredIn` (transferencia entre locais)
+  - Cada linha tem `deduplication_key` para idempotencia por organizacao.
+
+- **Reservas (`stock_reservation`)**
+  - Representa reservas explicitas de estoque por SKU/local.
+  - Campos principais: `quantity`, `status` (Active/Cancelled/Consumed), `reserved_at`, `expires_at`.
+  - Hoje a UI cria reservas manuais; no futuro, a ideia e vincular a pedidos/empenhos.
+
+- **Outbox de Eventos (`stock_outbox_event`)**
+  - Implementa o Outbox Pattern para integracao assincrona (Kafka).
+  - Campos: `aggregate_type`, `aggregate_id`, `event_type`, `payload` (JSON), `status`.
+  - Toda movimentacao grava na outbox dentro da mesma transacao do ledger/saldo.
+
+- **Camada de Servico (`StockService`)**
+  - Expe operacoes de dominio:
+    - `ReceiveAsync` (entrada manual)
+    - `AdjustAsync` (ajuste para novo saldo fisico)
+    - `TransferAsync` (entre locais)
+    - `ReserveAsync` / `ReleaseReservationAsync`
+    - `ShipAsync` (baixa, opcionalmente consumindo reserva)
+    - Consultas: saldos, livro-razão recente, reservas ativas.
+  - Garante:
+    - Idempotencia via `deduplication_key` gerada no backend.
+    - Consistencia entre `stock_balance`, `stock_ledger` e `stock_reservation`.
+    - Validacao de tenant: SKU e local precisam pertencer a mesma organizacao.
+    - Gera automaticamente `source_type = "AJUSTE MANUAL"` e um `source_id` (GUID) para
+      todas as movimentacoes feitas pela UI.
+
+- **UI de Estoque**
+  - **Dashboard de Estoque** (`/Stock/Index`):
+    - Lista saldos por SKU/local (fisico, reservado, disponivel).
+    - Lista reservas ativas e permite liberacao manual.
+    - Lista ultimas movimentacoes (livro-razão).
+  - **Movimentacoes Manuais** (`/Stock/Receive`, `/Stock/Adjust`, `/Stock/Transfer`, `/Stock/Reserve`, `/Stock/Ship`):
+    - Usuario seleciona SKU, local (e local destino, quando aplicavel), quantidade e um motivo opcional.
+    - O sistema gera internamente a fonte, o identificador e a chave de idempotencia.
+  - **Locais de Estoque** (`/Stock/Locations`):
+    - Cadastro e edicao de locais, inclusive marcacao de local padrao.
+
+### Roadmap do Modulo de Estoque
+
+Proximos passos planejados para evoluir o modulo:
+
+- **Outbox Relay para Kafka**
+  - Criar um processo/worker (console app ou Windows Service) que:
+    - Leia registros de `stock_outbox_event` com `status = 0` (pendente),
+    - Publique os eventos no Kafka usando `Confluent.Kafka`,
+    - Atualize `status` para `1` (publicado) ou `2` (erro), registrando `error` e `published_at`.
+  - Permitir configuracao de topico/chave por tipo de evento (ex.: `stock-events`, `stock-reservations`).
+
+- **Worker de Consumo (Kafka -> Outros Contextos)**
+  - Implementar um worker separado que consuma eventos de estoque para:
+    - Manter projecoes em outros servicos (e-commerce, PNCP, relatorios, etc.).
+    - Atualizar caches e indices de busca dependentes de disponibilidade.
+
+- **Integracao com Modulos de Negocio**
+  - Substituir gradualmente movimentacoes manuais por integracoes:
+    - Reservas disparadas por pedidos/vendas.
+    - Entradas disparadas por compras/recebimento/NFe.
+    - Baixas disparadas por faturamento/expedicao.
+
 ## Notas Tecnicas
 
 ### Injecao de Dependencia
