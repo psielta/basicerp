@@ -444,6 +444,76 @@ namespace WebApplicationBasic.Controllers
             }
         }
 
+        // API: /Stock/SearchVariants
+        [HttpGet]
+        public async Task<JsonResult> SearchVariants(string search = "", int page = 1, int pageSize = 30)
+        {
+            if (CurrentOrganizationId == Guid.Empty)
+            {
+                return Json(new { results = new object[0], pagination = new { more = false } }, JsonRequestBehavior.AllowGet);
+            }
+
+            var query = Context.ProductVariants
+                .Include(v => v.ProductTemplate)
+                .Where(v => v.OrganizationId == CurrentOrganizationId && v.DeletedAt == null && v.IsActive);
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchLower = search.ToLower();
+                query = query.Where(v =>
+                    v.Sku.ToLower().Contains(searchLower) ||
+                    v.Name.ToLower().Contains(searchLower) ||
+                    v.ProductTemplate.Name.ToLower().Contains(searchLower));
+            }
+
+            var totalCount = await query.CountAsync();
+            var variants = await query
+                .OrderBy(v => v.Sku)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(v => new
+                {
+                    id = v.Id,
+                    text = v.Sku + " - " + v.Name + (string.IsNullOrEmpty(v.ProductTemplate.Name) ? "" : " (" + v.ProductTemplate.Name + ")")
+                })
+                .ToListAsync();
+
+            var hasMore = (page * pageSize) < totalCount;
+
+            return Json(new
+            {
+                results = variants,
+                pagination = new { more = hasMore }
+            }, JsonRequestBehavior.AllowGet);
+        }
+
+        // API: /Stock/GetVariantById/{id}
+        [HttpGet]
+        public async Task<JsonResult> GetVariantById(Guid id)
+        {
+            if (CurrentOrganizationId == Guid.Empty)
+            {
+                return Json(new { id = Guid.Empty, text = "" }, JsonRequestBehavior.AllowGet);
+            }
+
+            var variant = await Context.ProductVariants
+                .Include(v => v.ProductTemplate)
+                .Where(v => v.Id == id && v.OrganizationId == CurrentOrganizationId && v.DeletedAt == null)
+                .Select(v => new
+                {
+                    id = v.Id,
+                    text = v.Sku + " - " + v.Name + (string.IsNullOrEmpty(v.ProductTemplate.Name) ? "" : " (" + v.ProductTemplate.Name + ")")
+                })
+                .FirstOrDefaultAsync();
+
+            if (variant == null)
+            {
+                return Json(new { id = Guid.Empty, text = "" }, JsonRequestBehavior.AllowGet);
+            }
+
+            return Json(variant, JsonRequestBehavior.AllowGet);
+        }
+
         private async Task PopulateOptions(StockMovementFormViewModel model)
         {
             var locations = await _stockService.GetLocationsAsync(CurrentOrganizationId, includeInactive: false);
@@ -459,20 +529,8 @@ namespace WebApplicationBasic.Controllers
                 })
                 .ToList();
 
-            var variants = await Context.ProductVariants
-                .Include(v => v.ProductTemplate)
-                .Where(v => v.OrganizationId == CurrentOrganizationId && v.DeletedAt == null && v.IsActive)
-                .OrderBy(v => v.Sku)
-                .Select(v => new StockVariantOption
-                {
-                    Id = v.Id,
-                    Sku = v.Sku,
-                    Name = v.Name,
-                    ProductName = v.ProductTemplate.Name
-                })
-                .ToListAsync();
-
-            model.Variants = variants;
+            // N�o mais carregamos todas as variantes aqui
+            model.Variants = new System.Collections.Generic.List<StockVariantOption>();
         }
     }
 }

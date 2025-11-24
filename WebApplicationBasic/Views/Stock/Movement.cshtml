@@ -17,13 +17,13 @@
 
     <div class="mb-3">
         @Html.LabelFor(m => m.VariantId, new { @class = "form-label" })
-        @Html.DropDownListFor(m => m.VariantId, new SelectList(Model.Variants, "Id", "Display", Model.VariantId), "Selecione o SKU", new { @class = "form-control" })
+        @Html.DropDownListFor(m => m.VariantId, new SelectList(Enumerable.Empty<SelectListItem>()), "Selecione o SKU", new { @class = "form-control select2-variant", id = "VariantId" })
         @Html.ValidationMessageFor(m => m.VariantId, "", new { @class = "text-danger" })
     </div>
 
     <div class="mb-3">
         @Html.LabelFor(m => m.LocationId, new { @class = "form-label" })
-        @Html.DropDownListFor(m => m.LocationId, new SelectList(Model.Locations, "Id", "Display", Model.LocationId), "Selecione o local", new { @class = "form-control" })
+        @Html.DropDownListFor(m => m.LocationId, new SelectList(Model.Locations, "Id", "Display", Model.LocationId), "Selecione o local", new { @class = "form-control select2-location" })
         @Html.ValidationMessageFor(m => m.LocationId, "", new { @class = "text-danger" })
     </div>
 
@@ -31,7 +31,7 @@
     {
         <div class="mb-3">
             @Html.LabelFor(m => m.TargetLocationId, "Local de destino", new { @class = "form-label" })
-            @Html.DropDownListFor(m => m.TargetLocationId, new SelectList(Model.Locations, "Id", "Display", Model.TargetLocationId), "Selecione o destino", new { @class = "form-control" })
+            @Html.DropDownListFor(m => m.TargetLocationId, new SelectList(Model.Locations, "Id", "Display", Model.TargetLocationId), "Selecione o destino", new { @class = "form-control select2-location" })
             @Html.ValidationMessageFor(m => m.TargetLocationId, "", new { @class = "text-danger" })
         </div>
     }
@@ -68,5 +68,71 @@
 }
 
 @section Scripts {
-    @Scripts.Render("~/bundles/jqueryval")
+    <!-- jQuery Validation -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // Inicializa Select2 para variantes com busca server-side
+            $('.select2-variant').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Digite para buscar SKU, nome ou produto',
+                allowClear: true,
+                minimumInputLength: 0,
+                ajax: {
+                    url: '@Url.Action("SearchVariants", "Stock")',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            search: params.term || '',
+                            page: params.page || 1,
+                            pageSize: 30
+                        };
+                    },
+                    processResults: function (data, params) {
+                        params.page = params.page || 1;
+                        return {
+                            results: data.results,
+                            pagination: {
+                                more: data.pagination.more
+                            }
+                        };
+                    },
+                    cache: true
+                }
+            });
+
+            // Inicializa Select2 para locais (dados estaticos do Model)
+            $('.select2-location').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Selecione o local',
+                allowClear: true
+            });
+
+            @if (Model.VariantId != Guid.Empty)
+            {
+                <text>
+                // Se j� houver um valor selecionado, carrega a op��o inicial
+                var variantId = '@Model.VariantId';
+                if (variantId && variantId !== '00000000-0000-0000-0000-000000000000') {
+                    $.ajax({
+                        url: '@Url.Action("GetVariantById", "Stock")',
+                        data: { id: variantId },
+                        dataType: 'json'
+                    }).then(function (data) {
+                        if (data && data.id && data.id !== '00000000-0000-0000-0000-000000000000') {
+                            // Cria a op��o e a anexa ao Select2
+                            var option = new Option(data.text, data.id, true, true);
+                            $('.select2-variant').append(option).trigger('change');
+                        }
+                    });
+                }
+                </text>
+            }
+        });
+    </script>
 }

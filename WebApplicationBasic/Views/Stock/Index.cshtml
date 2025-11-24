@@ -1,8 +1,55 @@
 ﻿@using System.Linq
+@using EntityFrameworkProject.Models
 @model WebApplicationBasic.Models.ViewModels.StockDashboardViewModel
 
 @{
     ViewBag.Title = "Estoque";
+}
+
+@functions {
+    string GetMovementTypeDisplay(StockMovementType type)
+    {
+        switch (type)
+        {
+            case StockMovementType.StockReceived:
+                return "Entrada";
+            case StockMovementType.StockReserved:
+                return "Reservado";
+            case StockMovementType.StockReleased:
+                return "Liberado";
+            case StockMovementType.StockShipped:
+                return "Saída";
+            case StockMovementType.StockAdjusted:
+                return "Ajuste";
+            case StockMovementType.StockTransferredOut:
+                return "Transf. Saída";
+            case StockMovementType.StockTransferredIn:
+                return "Transf. Entrada";
+            default:
+                return type.ToString();
+        }
+    }
+
+    string GetMovementTypeBadgeClass(StockMovementType type)
+    {
+        switch (type)
+        {
+            case StockMovementType.StockReceived:
+            case StockMovementType.StockTransferredIn:
+                return "bg-success";
+            case StockMovementType.StockReserved:
+                return "bg-warning text-dark";
+            case StockMovementType.StockReleased:
+                return "bg-info";
+            case StockMovementType.StockShipped:
+            case StockMovementType.StockTransferredOut:
+                return "bg-danger";
+            case StockMovementType.StockAdjusted:
+                return "bg-secondary";
+            default:
+                return "bg-secondary";
+        }
+    }
 }
 
 @if (TempData["Success"] != null)
@@ -35,7 +82,7 @@
         @Html.DropDownListFor(m => m.LocationId,
             new SelectList(Model.Locations, "Id", "Display", Model.LocationId),
             "Todos os locais",
-            new { @class = "form-control" })
+            new { @class = "form-control select2-location" })
     </div>
     <div class="col-md-2">
         <button type="submit" class="btn btn-primary">Filtrar</button>
@@ -110,7 +157,29 @@
                     <td>@r.LocationName</td>
                     <td class="text-end">@r.Quantity</td>
                     <td>@r.ReservedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                    <td>@(r.ExpiresAt.HasValue ? r.ExpiresAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                    <td>
+                        @if (r.ExpiresAt.HasValue)
+                        {
+                            var expiresAt = r.ExpiresAt.Value;
+                            var now = DateTime.UtcNow;
+                            var hoursUntilExpiry = (expiresAt - now).TotalHours;
+
+                            @expiresAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+
+                            if (expiresAt < now)
+                            {
+                                <span class="badge bg-danger ms-1">Vencida</span>
+                            }
+                            else if (hoursUntilExpiry <= 24)
+                            {
+                                <span class="badge bg-warning text-dark ms-1">Vence em breve</span>
+                            }
+                        }
+                        else
+                        {
+                            <text>-</text>
+                        }
+                    </td>
                     <td class="text-end">
                         @using (Html.BeginForm("ReleaseReservation", "Stock", FormMethod.Post, new { onsubmit = "return confirm('Liberar esta reserva?');" }))
                         {
@@ -153,10 +222,24 @@
                     <td>@l.LocationName</td>
                     <td class="text-end">@l.DeltaOnHand</td>
                     <td class="text-end">@l.DeltaReserved</td>
-                    <td>@l.MovementType</td>
+                    <td><span class="badge @GetMovementTypeBadgeClass(l.MovementType)">@GetMovementTypeDisplay(l.MovementType)</span></td>
                     <td>@l.Reason</td>
                 </tr>
             }
         }
     </tbody>
 </table>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Inicializa Select2 para locais (filtro)
+            $('.select2-location').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Todos os locais',
+                allowClear: true
+            });
+        });
+    </script>
+}
