@@ -69,7 +69,7 @@
         @Html.ActionLink("Transferir", "Transfer", null, new { @class = "btn btn-outline-secondary" })
         @Html.ActionLink("Reservar", "Reserve", null, new { @class = "btn btn-outline-secondary" })
         @Html.ActionLink("Baixa", "Ship", null, new { @class = "btn btn-outline-danger" })
-        @Html.ActionLink("Locais", "Locations", null, new { @class = "btn btn-outline-dark" })
+        @Html.ActionLink("Locais", "Locations", null, new { @class = "btn btn-outline-secondary" })
     </div>
 </div>
 
@@ -89,7 +89,7 @@
     </div>
 }
 
-<table class="table table-striped table-bordered">
+<table id="stockBalancesTable" class="table table-striped table-bordered">
     <thead>
         <tr>
             <th>SKU</th>
@@ -122,7 +122,7 @@
                     <td class="text-end">@item.OnHand</td>
                     <td class="text-end">@item.Reserved</td>
                     <td class="text-end">@item.Available</td>
-                    <td>@item.LastMovementAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td data-order="@item.LastMovementAt.ToString("yyyyMMddHHmmss")">@item.LastMovementAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                 </tr>
             }
         }
@@ -130,7 +130,7 @@
 </table>
 
 <h4 class="mt-4">Reservas ativas</h4>
-<table class="table table-sm table-bordered">
+<table id="reservationsTable" class="table table-sm table-bordered">
     <thead>
         <tr>
             <th>SKU</th>
@@ -156,8 +156,8 @@
                     <td>@r.ProductName<br /><small class="text-muted">@r.VariantName</small></td>
                     <td>@r.LocationName</td>
                     <td class="text-end">@r.Quantity</td>
-                    <td>@r.ReservedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                    <td>
+                    <td data-order="@r.ReservedAt.ToString("yyyyMMddHHmmss")">@r.ReservedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td data-order="@(r.ExpiresAt.HasValue ? r.ExpiresAt.Value.ToString("yyyyMMddHHmmss") : "")">
                         @if (r.ExpiresAt.HasValue)
                         {
                             var expiresAt = r.ExpiresAt.Value;
@@ -195,7 +195,7 @@
 </table>
 
 <h4 class="mt-4">Ultimas movimentacoes</h4>
-<table class="table table-sm table-hover">
+<table id="ledgerTable" class="table table-sm table-hover">
     <thead>
         <tr>
             <th>Quando</th>
@@ -217,7 +217,7 @@
             foreach (var l in Model.RecentLedger)
             {
                 <tr>
-                    <td>@l.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td data-order="@l.OccurredAt.ToString("yyyyMMddHHmmss")">@l.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                     <td>@l.Sku</td>
                     <td>@l.LocationName</td>
                     <td class="text-end">@l.DeltaOnHand</td>
@@ -240,6 +240,79 @@
                 placeholder: 'Todos os locais',
                 allowClear: true
             });
+
+            // Configuração comum para DataTables em português
+            const ptBR = {
+                "sEmptyTable": "Nenhum registro encontrado",
+                "sInfo": "Mostrando de _START_ até _END_ de _TOTAL_ registros",
+                "sInfoEmpty": "Mostrando 0 até 0 de 0 registros",
+                "sInfoFiltered": "(Filtrados de _MAX_ registros)",
+                "sInfoPostFix": "",
+                "sInfoThousands": ".",
+                "sLengthMenu": "_MENU_ resultados por página",
+                "sLoadingRecords": "Carregando...",
+                "sProcessing": "Processando...",
+                "sZeroRecords": "Nenhum registro encontrado",
+                "sSearch": "Pesquisar",
+                "oPaginate": {
+                    "sNext": "Próximo",
+                    "sPrevious": "Anterior",
+                    "sFirst": "Primeiro",
+                    "sLast": "Último"
+                },
+                "oAria": {
+                    "sSortAscending": ": Ordenar colunas de forma ascendente",
+                    "sSortDescending": ": Ordenar colunas de forma descendente"
+                }
+            };
+
+            // Função para verificar se a tabela tem dados reais (não apenas mensagem de vazio)
+            function hasTableData($table) {
+                var $tbody = $table.find('tbody');
+                var $rows = $tbody.find('tr');
+                // Verifica se há mais de uma linha OU se a primeira linha não tem colspan
+                return $rows.length > 1 || ($rows.length === 1 && !$rows.first().find('td[colspan]').length);
+            }
+
+            // Inicializa DataTable para saldos de estoque
+            if (hasTableData($('#stockBalancesTable'))) {
+                $('#stockBalancesTable').DataTable({
+                    language: ptBR,
+                    responsive: true,
+                    pageLength: 25,
+                    order: [[0, 'asc']], // Ordena por SKU
+                    columnDefs: [
+                        { targets: [3, 4, 5], className: 'text-end' } // Alinha colunas numéricas à direita
+                    ]
+                });
+            }
+
+            // Inicializa DataTable para reservas ativas
+            if (hasTableData($('#reservationsTable'))) {
+                $('#reservationsTable').DataTable({
+                    language: ptBR,
+                    responsive: true,
+                    pageLength: 10,
+                    order: [[4, 'desc']], // Ordena por data de reserva (mais recente primeiro)
+                    columnDefs: [
+                        { targets: [3], className: 'text-end' },
+                        { targets: [6], orderable: false } // Botão de ação não ordenável
+                    ]
+                });
+            }
+
+            // Inicializa DataTable para últimas movimentações
+            if (hasTableData($('#ledgerTable'))) {
+                $('#ledgerTable').DataTable({
+                    language: ptBR,
+                    responsive: true,
+                    pageLength: 15,
+                    order: [[0, 'desc']], // Ordena por data (mais recente primeiro)
+                    columnDefs: [
+                        { targets: [3, 4], className: 'text-end' }
+                    ]
+                });
+            }
         });
     </script>
 }

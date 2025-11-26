@@ -372,10 +372,11 @@
     <Content Include="Views\Stock\Movement.cshtml" />
     <Content Include="Scripts\product-wizard.js" />
     <Content Include="Scripts\product-wizard-edit.js" />
+    <Content Include="Scripts\theme-switcher.js" />
+    <Content Include="Content\dark-mode.css" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
-    <Folder Include="Content\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\EntityFrameworkProject\EntityFrameworkProject.csproj">
