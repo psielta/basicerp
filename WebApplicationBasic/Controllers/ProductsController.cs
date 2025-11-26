@@ -11,8 +11,8 @@ using Serilog;
 
 namespace WebApplicationBasic.Controllers
 {
-        [CustomAuthorize(OrganizationRoles = "admin,owner")]
-        public class ProductsController : BaseController
+    [CustomAuthorize(OrganizationRoles = "admin,owner")]
+    public class ProductsController : BaseController
     {
         // GET: /Products
         public async Task<ActionResult> Index(string search)
@@ -306,10 +306,52 @@ namespace WebApplicationBasic.Controllers
             if (model.ProductType == ProductType.Configurable)
             {
                 ModelState.Remove("Sku");
+                ModelState.Remove("VariantName");
+                ModelState.Remove("VariantDescription");
+                ModelState.Remove("Cost");
+                ModelState.Remove("Weight");
+                ModelState.Remove("Height");
+                ModelState.Remove("Width");
+                ModelState.Remove("Length");
+                ModelState.Remove("Barcode");
+                ModelState.Remove("RawVariationDescription");
+
+                // Remover validações de VariantAttributes (são usados apenas para UI, não para persistência)
+                // e validações de variantes individuais que podem ter campos opcionais vazios
+                var keysToRemove = ModelState.Keys
+                    .Where(k => k.StartsWith("VariantAttributes[") ||
+                               (k.StartsWith("Variants[") &&
+                               (k.EndsWith("].Name") ||
+                                k.EndsWith("].Description") ||
+                                k.EndsWith("].Barcode") ||
+                                k.EndsWith("].Weight") ||
+                                k.EndsWith("].Height") ||
+                                k.EndsWith("].Width") ||
+                                k.EndsWith("].Length"))))
+                    .ToList();
+
+                foreach (var key in keysToRemove)
+                {
+                    ModelState.Remove(key);
+                }
             }
 
             if (!ModelState.IsValid)
             {
+                // Log detalhado dos erros de validação
+                var errors = ModelState
+                    .Where(x => x.Value.Errors.Count > 0)
+                    .Select(x => new { Key = x.Key, Errors = x.Value.Errors.Select(e => e.ErrorMessage).ToList() })
+                    .ToList();
+
+                if (errors.Any())
+                {
+                    var errorMessages = string.Join("; ", errors.SelectMany(e =>
+                        e.Errors.Select(err => $"{e.Key}: {err}")));
+                    Log.Warning("UPDATE_PRODUCT_VALIDATION_FAILED: Erros de validação para produto {ProductId}: {Errors}",
+                        model.Id, errorMessages);
+                }
+
                 await LoadAvailableCategories(model);
                 await LoadAvailableAttributesForEdit(model, null);
                 return View("EditWizard", model);
@@ -523,8 +565,26 @@ namespace WebApplicationBasic.Controllers
                 TempData["Success"] = "Produto atualizado com sucesso.";
                 return RedirectToAction("Index");
             }
+            catch (DbUpdateException dbEx) when (IsDuplicateSkuError(dbEx))
+            {
+                Log.Warning(dbEx, "PRODUCT_UPDATE_DUPLICATE_SKU: SKU duplicado ao atualizar produto {ProductId} para organização {OrganizationId} por usuário {UserId}",
+                    model.Id, CurrentOrganizationId, CurrentUserId);
+
+                // Identificar qual SKU está duplicado
+                var duplicateSkus = FindDuplicateSkus(model);
+                var errorMessage = duplicateSkus.Any()
+                    ? $"Já existe(m) variante(s) com o(s) SKU(s): {string.Join(", ", duplicateSkus)}. Por favor, altere para valores únicos."
+                    : "Já existe uma variante com este SKU. Por favor, utilize um SKU diferente.";
+
+                ModelState.AddModelError("", errorMessage);
+                await LoadAvailableCategories(model);
+                await LoadAvailableAttributesForEdit(model, template);
+                return View("EditWizard", model);
+            }
             catch (Exception ex)
             {
+                Log.Error(ex, "PRODUCT_UPDATE_ERROR: Erro ao atualizar produto {ProductId} para organização {OrganizationId} por usuário {UserId}",
+                    model.Id, CurrentOrganizationId, CurrentUserId);
                 ModelState.AddModelError("", "Ocorreu um erro ao atualizar o produto: " + ex.Message);
                 await LoadAvailableCategories(model);
                 await LoadAvailableAttributesForEdit(model, template);
@@ -833,8 +893,26 @@ namespace WebApplicationBasic.Controllers
                 TempData["Success"] = "Produto criado com sucesso.";
                 return RedirectToAction("Index");
             }
+            catch (DbUpdateException dbEx) when (IsDuplicateSkuError(dbEx))
+            {
+                Log.Warning(dbEx, "PRODUCT_CREATE_DUPLICATE_SKU: SKU duplicado ao criar produto para organização {OrganizationId} por usuário {UserId}",
+                    CurrentOrganizationId, CurrentUserId);
+
+                // Identificar qual SKU está duplicado
+                var duplicateSkus = FindDuplicateSkus(model);
+                var errorMessage = duplicateSkus.Any()
+                    ? $"Já existe(m) variante(s) com o(s) SKU(s): {string.Join(", ", duplicateSkus)}. Por favor, altere para valores únicos."
+                    : "Já existe uma variante com este SKU. Por favor, utilize um SKU diferente.";
+
+                ModelState.AddModelError("", errorMessage);
+                await LoadAvailableCategories(model);
+                await LoadAvailableAttributes(model);
+                return View("CreateWizard", model);
+            }
             catch (Exception ex)
             {
+                Log.Error(ex, "PRODUCT_CREATE_ERROR: Erro ao criar produto para organização {OrganizationId} por usuário {UserId}",
+                    CurrentOrganizationId, CurrentUserId);
                 ModelState.AddModelError("", "Ocorreu um erro ao criar o produto: " + ex.Message);
                 await LoadAvailableCategories(model);
                 await LoadAvailableAttributes(model);
@@ -894,6 +972,7 @@ namespace WebApplicationBasic.Controllers
 
         // POST: /Products/ToggleVariant/{id}
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<ActionResult> ToggleVariant(Guid id)
         {
             if (CurrentOrganizationId == Guid.Empty)
@@ -1043,15 +1122,34 @@ namespace WebApplicationBasic.Controllers
                 return HttpNotFound();
             }
 
-            // Carregar atributos de variação disponíveis
+            // Carregar atributos de variação que estão em uso neste produto
+            var existingVariants = await Context.ProductVariants
+                .Include(v => v.AttributeValues)
+                .Where(v => v.ProductTemplateId == templateId && v.DeletedAt == null)
+                .ToListAsync();
+
+            // Obter os IDs de atributos usados nas variantes existentes
+            var usedAttributeValueIds = existingVariants
+                .SelectMany(v => v.AttributeValues.Select(av => av.AttributeValueId))
+                .Distinct()
+                .ToList();
+
+            var usedAttributeIds = await Context.ProductAttributeValues
+                .Where(pav => usedAttributeValueIds.Contains(pav.Id))
+                .Select(pav => pav.AttributeId)
+                .Distinct()
+                .ToListAsync();
+
+            // Carregar apenas atributos que estão em uso neste produto
             var variantAttributes = await Context.ProductAttributes
                 .Include(a => a.Values)
-                .Where(a => a.OrganizationId == CurrentOrganizationId)
+                .Where(a => a.OrganizationId == CurrentOrganizationId && usedAttributeIds.Contains(a.Id))
                 .Select(a => new VariantAttributeSelectionViewModel
                 {
                     AttributeId = a.Id,
                     AttributeName = a.Name,
                     AttributeCode = a.Code,
+                    IsUsedForVariants = true,
                     SelectedValues = a.Values
                         .OrderBy(v => v.SortOrder)
                         .Select(v => new AttributeValueSelectionViewModel
@@ -1065,11 +1163,25 @@ namespace WebApplicationBasic.Controllers
                 })
                 .ToListAsync();
 
+            // Criar lista de combinações de atributos já existentes
+            var existingCombinations = existingVariants
+                .Select(v => System.Text.Json.JsonSerializer.Serialize(
+                    v.AttributeValues.Select(av => av.AttributeValueId).OrderBy(id => id).ToList()))
+                .ToList();
+
+            // Carregar SKUs existentes na organização
+            var existingSkus = await Context.ProductVariants
+                .Where(v => v.OrganizationId == CurrentOrganizationId && v.DeletedAt == null)
+                .Select(v => v.Sku)
+                .ToListAsync();
+
             var model = new AddVariantViewModel
             {
                 ProductTemplateId = templateId,
                 ProductName = template.Name,
                 VariantAttributes = variantAttributes,
+                ExistingAttributeCombinations = existingCombinations,
+                ExistingSkus = existingSkus,
                 IsActive = true
             };
 
@@ -1089,40 +1201,53 @@ namespace WebApplicationBasic.Controllers
 
             if (!ModelState.IsValid)
             {
-                // Recarregar atributos de variação
-                var variantAttributes = await Context.ProductAttributes
-                    .Include(a => a.Values)
-                    .Where(a => a.OrganizationId == CurrentOrganizationId)
-                    .Select(a => new VariantAttributeSelectionViewModel
-                    {
-                        AttributeId = a.Id,
-                        AttributeName = a.Name,
-                        AttributeCode = a.Code,
-                        SelectedValues = a.Values
-                            .OrderBy(v => v.SortOrder)
-                            .Select(v => new AttributeValueSelectionViewModel
-                            {
-                                Id = v.Id,
-                                Value = v.Value,
-                                SortOrder = v.SortOrder,
-                                IsSelected = false
-                            })
-                            .ToList()
-                    })
-                    .ToListAsync();
-
-                model.VariantAttributes = variantAttributes;
+                await ReloadAddVariantModel(model);
                 return View(model);
             }
 
             // Validar SKU único
             var skuExists = await Context.ProductVariants
-                .AnyAsync(v => v.OrganizationId == CurrentOrganizationId && v.Sku == model.Sku);
+                .AnyAsync(v => v.OrganizationId == CurrentOrganizationId &&
+                              v.DeletedAt == null &&
+                              v.Sku == model.Sku);
 
             if (skuExists)
             {
                 ModelState.AddModelError("Sku", "Já existe uma variante com este SKU nesta organização.");
+                await ReloadAddVariantModel(model);
                 return View(model);
+            }
+
+            // Validar combinação de atributos única
+            if (model.SelectedAttributeValues != null && model.SelectedAttributeValues.Any())
+            {
+                var selectedIds = model.SelectedAttributeValues.OrderBy(id => id).ToList();
+                var selectedCombinationJson = System.Text.Json.JsonSerializer.Serialize(selectedIds);
+
+                var existingVariants = await Context.ProductVariants
+                    .Include(v => v.AttributeValues)
+                    .Where(v => v.ProductTemplateId == model.ProductTemplateId && v.DeletedAt == null)
+                    .ToListAsync();
+
+                var existingCombinations = existingVariants
+                    .Select(v => System.Text.Json.JsonSerializer.Serialize(
+                        v.AttributeValues.Select(av => av.AttributeValueId).OrderBy(id => id).ToList()))
+                    .ToList();
+
+                if (existingCombinations.Contains(selectedCombinationJson))
+                {
+                    // Buscar descrição da combinação duplicada
+                    var attributeValueNames = await Context.ProductAttributeValues
+                        .Include(pav => pav.Attribute)
+                        .Where(pav => selectedIds.Contains(pav.Id))
+                        .Select(pav => new { pav.Attribute.Name, pav.Value })
+                        .ToListAsync();
+
+                    var combinationDescription = string.Join(", ", attributeValueNames.Select(a => $"{a.Name}: {a.Value}"));
+                    ModelState.AddModelError("", $"Já existe uma variante com esta combinação de atributos: {combinationDescription}");
+                    await ReloadAddVariantModel(model);
+                    return View(model);
+                }
             }
 
             var newVariant = new ProductVariant
@@ -1157,11 +1282,90 @@ namespace WebApplicationBasic.Controllers
                 }
             }
 
-            Context.ProductVariants.Add(newVariant);
-            await Context.SaveChangesAsync();
+            try
+            {
+                Context.ProductVariants.Add(newVariant);
+                await Context.SaveChangesAsync();
 
-            TempData["Success"] = "Variante adicionada com sucesso.";
-            return RedirectToAction("ManageVariants", new { id = model.ProductTemplateId });
+                Log.Information("PRODUCT_VARIANT_ADDED: Variante {VariantId} (SKU: {Sku}) adicionada ao produto {ProductId} por usuário {UserId}",
+                    newVariant.Id, newVariant.Sku, model.ProductTemplateId, CurrentUserId);
+
+                TempData["Success"] = "Variante adicionada com sucesso.";
+                return RedirectToAction("ManageVariants", new { id = model.ProductTemplateId });
+            }
+            catch (DbUpdateException dbEx) when (IsDuplicateSkuError(dbEx))
+            {
+                Log.Warning(dbEx, "VARIANT_ADD_DUPLICATE_SKU: SKU duplicado ao adicionar variante para produto {ProductId}", model.ProductTemplateId);
+                ModelState.AddModelError("Sku", "Já existe uma variante com este SKU. Por favor, utilize um SKU diferente.");
+                await ReloadAddVariantModel(model);
+                return View(model);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "VARIANT_ADD_ERROR: Erro ao adicionar variante para produto {ProductId}", model.ProductTemplateId);
+                ModelState.AddModelError("", "Ocorreu um erro ao adicionar a variante: " + ex.Message);
+                await ReloadAddVariantModel(model);
+                return View(model);
+            }
+        }
+
+        /// <summary>
+        /// Recarrega os dados necessários para o formulário de adicionar variante
+        /// </summary>
+        private async Task ReloadAddVariantModel(AddVariantViewModel model)
+        {
+            // Carregar variantes existentes do produto
+            var existingVariants = await Context.ProductVariants
+                .Include(v => v.AttributeValues)
+                .Where(v => v.ProductTemplateId == model.ProductTemplateId && v.DeletedAt == null)
+                .ToListAsync();
+
+            // Obter os IDs de atributos usados nas variantes existentes
+            var usedAttributeValueIds = existingVariants
+                .SelectMany(v => v.AttributeValues.Select(av => av.AttributeValueId))
+                .Distinct()
+                .ToList();
+
+            var usedAttributeIds = await Context.ProductAttributeValues
+                .Where(pav => usedAttributeValueIds.Contains(pav.Id))
+                .Select(pav => pav.AttributeId)
+                .Distinct()
+                .ToListAsync();
+
+            // Carregar apenas atributos que estão em uso neste produto
+            model.VariantAttributes = await Context.ProductAttributes
+                .Include(a => a.Values)
+                .Where(a => a.OrganizationId == CurrentOrganizationId && usedAttributeIds.Contains(a.Id))
+                .Select(a => new VariantAttributeSelectionViewModel
+                {
+                    AttributeId = a.Id,
+                    AttributeName = a.Name,
+                    AttributeCode = a.Code,
+                    IsUsedForVariants = true,
+                    SelectedValues = a.Values
+                        .OrderBy(v => v.SortOrder)
+                        .Select(v => new AttributeValueSelectionViewModel
+                        {
+                            Id = v.Id,
+                            Value = v.Value,
+                            SortOrder = v.SortOrder,
+                            IsSelected = model.SelectedAttributeValues != null && model.SelectedAttributeValues.Contains(v.Id)
+                        })
+                        .ToList()
+                })
+                .ToListAsync();
+
+            // Criar lista de combinações de atributos já existentes
+            model.ExistingAttributeCombinations = existingVariants
+                .Select(v => System.Text.Json.JsonSerializer.Serialize(
+                    v.AttributeValues.Select(av => av.AttributeValueId).OrderBy(id => id).ToList()))
+                .ToList();
+
+            // Carregar SKUs existentes na organização
+            model.ExistingSkus = await Context.ProductVariants
+                .Where(v => v.OrganizationId == CurrentOrganizationId && v.DeletedAt == null)
+                .Select(v => v.Sku)
+                .ToListAsync();
         }
 
         // Métodos auxiliares
@@ -1252,6 +1456,67 @@ namespace WebApplicationBasic.Controllers
             clean = System.Text.RegularExpressions.Regex.Replace(clean, "\\s+", "-");
             clean = System.Text.RegularExpressions.Regex.Replace(clean, "-+", "-");
             return clean.Trim('-');
+        }
+
+        /// <summary>
+        /// Verifica se a exceção é um erro de SKU duplicado (constraint violation)
+        /// </summary>
+        private static bool IsDuplicateSkuError(DbUpdateException ex)
+        {
+            var innerException = ex.InnerException?.ToString() ?? ex.ToString();
+            return innerException.Contains("ux_product_variant_org_sku") ||
+                   innerException.Contains("duplicate key") ||
+                   innerException.Contains("23505"); // PostgreSQL unique violation code
+        }
+
+        /// <summary>
+        /// Encontra SKUs duplicados no modelo (duplicados entre si ou já existentes no banco)
+        /// </summary>
+        private List<string> FindDuplicateSkus(ProductFormViewModel model)
+        {
+            var duplicates = new List<string>();
+
+            if (model.Variants == null || !model.Variants.Any())
+                return duplicates;
+
+            // Pegar todos os SKUs do modelo
+            var modelSkus = model.Variants
+                .Where(v => !string.IsNullOrWhiteSpace(v.Sku))
+                .Select(v => v.Sku.Trim())
+                .ToList();
+
+            // Encontrar duplicados dentro do próprio modelo
+            var duplicatesInModel = modelSkus
+                .GroupBy(s => s, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            duplicates.AddRange(duplicatesInModel);
+
+            // Verificar SKUs que já existem no banco (excluindo variantes do mesmo produto)
+            var existingVariantIds = model.Variants
+                .Where(v => v.Id.HasValue && v.Id.Value != Guid.Empty)
+                .Select(v => v.Id.Value)
+                .ToList();
+
+            var existingSkusInDb = Context.ProductVariants
+                .Where(v => v.OrganizationId == CurrentOrganizationId &&
+                           v.DeletedAt == null &&
+                           !existingVariantIds.Contains(v.Id) &&
+                           modelSkus.Contains(v.Sku))
+                .Select(v => v.Sku)
+                .ToList();
+
+            foreach (var sku in existingSkusInDb)
+            {
+                if (!duplicates.Any(d => d.Equals(sku, StringComparison.OrdinalIgnoreCase)))
+                {
+                    duplicates.Add(sku);
+                }
+            }
+
+            return duplicates;
         }
     }
 }

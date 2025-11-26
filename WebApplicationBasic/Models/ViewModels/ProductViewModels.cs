@@ -358,5 +358,16 @@ namespace WebApplicationBasic.Models.ViewModels
 
         [Display(Name = "Valores de Atributos Selecionados")]
         public List<Guid> SelectedAttributeValues { get; set; } = new List<Guid>();
+
+        /// <summary>
+        /// Combinações de atributos já existentes no produto (para desabilitar na UI)
+        /// Cada item é um JSON array de AttributeValueIds
+        /// </summary>
+        public List<string> ExistingAttributeCombinations { get; set; } = new List<string>();
+
+        /// <summary>
+        /// SKUs já existentes na organização (para validação no frontend)
+        /// </summary>
+        public List<string> ExistingSkus { get; set; } = new List<string>();
     }
 }
