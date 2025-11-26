@@ -379,10 +379,12 @@ $(document).ready(function () {
     function generateSummary() {
         var summary = '<dl class="dl-horizontal">';
 
+        var productType = $('#ProductType').val();
+
         // Basic info
         summary += '<dt>Nome:</dt><dd>' + ($('#Name').val() || '-') + '</dd>';
         summary += '<dt>Marca:</dt><dd>' + ($('#Brand').val() || '-') + '</dd>';
-        summary += '<dt>Tipo:</dt><dd>' + ($('#ProductType').val() === '0' ? 'Produto Simples' : 'Produto com Variações') + '</dd>';
+        summary += '<dt>Tipo:</dt><dd>' + (productType === '0' ? 'Produto Simples' : 'Produto com Variações') + '</dd>';
 
         // Categories
         var selectedCategories = [];
@@ -400,12 +402,40 @@ $(document).ready(function () {
             summary += '<dt>Atributos de Variação:</dt><dd>' + selectedAttributes.join(', ') + '</dd>';
         }
 
-        // Variants count
-        if ($('#ProductType').val() === '1') { // Configurable
+        // Variants/SKU
+        if (productType === '1') { // Configurable
+            // Coletar todos os SKUs das variantes
+            var allSkus = [];
+            $('#variants-tbody tr.variant-row input[name$="].Sku"]').each(function () {
+                var sku = $(this).val();
+                if (sku) allSkus.push(sku);
+            });
+
             var variantCount = $('#variants-tbody tr.variant-row').length;
             summary += '<dt>Número de Variações:</dt><dd>' + variantCount + '</dd>';
+
+            // Mostrar lista de SKUs
+            if (allSkus.length > 0) {
+                summary += '<dt>SKUs:</dt><dd>';
+                if (allSkus.length <= 10) {
+                    summary += '<ul class="list-unstyled mb-0">';
+                    allSkus.forEach(function (sku) {
+                        summary += '<li><code>' + sku + '</code></li>';
+                    });
+                    summary += '</ul>';
+                } else {
+                    // Se muitos SKUs, mostrar resumido
+                    summary += '<ul class="list-unstyled mb-0">';
+                    for (var i = 0; i < 5; i++) {
+                        summary += '<li><code>' + allSkus[i] + '</code></li>';
+                    }
+                    summary += '<li>... e mais ' + (allSkus.length - 5) + ' SKU(s)</li>';
+                    summary += '</ul>';
+                }
+                summary += '</dd>';
+            }
         } else {
-            summary += '<dt>SKU:</dt><dd>' + ($('#Sku').val() || '-') + '</dd>';
+            summary += '<dt>SKU:</dt><dd><code>' + ($('#Sku').val() || '-') + '</code></dd>';
         }
 
         summary += '</dl>';
@@ -418,6 +448,108 @@ $(document).ready(function () {
             e.preventDefault();
             alert('Por favor, complete todos os campos obrigatórios.');
             return false;
+        }
+
+        // Validar SKUs duplicados antes de enviar (apenas para produtos configuráveis)
+        var productType = $('#ProductType').val();
+        if (productType === '1') {
+            var duplicateSkuValidation = validateDuplicateSkus();
+            if (!duplicateSkuValidation.valid) {
+                e.preventDefault();
+                alert('Existem SKUs duplicados no formulário:\n\n' + duplicateSkuValidation.duplicates.join('\n') + '\n\nPor favor, altere para valores únicos.');
+                highlightDuplicateSkus(duplicateSkuValidation.duplicates);
+                return false;
+            }
+        }
+    });
+
+    // Validar SKUs duplicados no formulário
+    function validateDuplicateSkus() {
+        var skus = [];
+        var duplicates = [];
+
+        // Coletar todos os SKUs das variantes
+        $('input[name*="Variants"][name$="].Sku"]').each(function () {
+            var sku = $(this).val();
+            if (sku && sku.trim() !== '') {
+                skus.push({
+                    sku: sku.trim().toUpperCase(),
+                    originalSku: sku.trim(),
+                    element: $(this)
+                });
+            }
+        });
+
+        // Encontrar duplicados
+        var skuCounts = {};
+        skus.forEach(function (item) {
+            if (skuCounts[item.sku]) {
+                skuCounts[item.sku]++;
+            } else {
+                skuCounts[item.sku] = 1;
+            }
+        });
+
+        for (var sku in skuCounts) {
+            if (skuCounts[sku] > 1) {
+                var originalSku = skus.find(function (s) { return s.sku === sku; }).originalSku;
+                duplicates.push(originalSku);
+            }
+        }
+
+        return {
+            valid: duplicates.length === 0,
+            duplicates: duplicates
+        };
+    }
+
+    // Destacar inputs com SKUs duplicados
+    function highlightDuplicateSkus(duplicates) {
+        $('input[name*="Variants"][name$="].Sku"]').removeClass('is-invalid');
+
+        $('input[name*="Variants"][name$="].Sku"]').each(function () {
+            var sku = $(this).val();
+            if (sku && sku.trim() !== '') {
+                var skuUpper = sku.trim().toUpperCase();
+                var isDuplicate = duplicates.some(function (d) {
+                    return d.toUpperCase() === skuUpper;
+                });
+                if (isDuplicate) {
+                    $(this).addClass('is-invalid');
+                }
+            }
+        });
+    }
+
+    // Validar SKU em tempo real ao sair do campo
+    $(document).on('blur', 'input[name*="Variants"][name$="].Sku"]', function () {
+        var currentInput = $(this);
+        var currentSku = currentInput.val();
+
+        if (!currentSku || currentSku.trim() === '') {
+            currentInput.removeClass('is-invalid');
+            return;
+        }
+
+        var currentSkuUpper = currentSku.trim().toUpperCase();
+        var isDuplicate = false;
+
+        $('input[name*="Variants"][name$="].Sku"]').not(currentInput).each(function () {
+            var otherSku = $(this).val();
+            if (otherSku && otherSku.trim().toUpperCase() === currentSkuUpper) {
+                isDuplicate = true;
+                return false;
+            }
+        });
+
+        if (isDuplicate) {
+            currentInput.addClass('is-invalid');
+            if (!currentInput.next('.invalid-feedback').length) {
+                currentInput.after('<div class="invalid-feedback">SKU duplicado</div>');
+            }
+        } else {
+            currentInput.removeClass('is-invalid');
+            currentInput.next('.invalid-feedback').remove();
         }
     });
 });
