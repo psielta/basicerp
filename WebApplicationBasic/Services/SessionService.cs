@@ -95,18 +95,23 @@ namespace WebApplicationBasic.Services
 
             if (session != null)
             {
-                var oldExpiry = session.ExpiresAt;
+                // Sliding expiration: renovar apenas se faltar menos de 50% do tempo de sessão
+                // Isso evita escritas no banco a cada request
+                var renewalThreshold = TimeSpan.FromHours(SessionExpirationHours / 2.0);
+                var timeUntilExpiry = session.ExpiresAt - DateTime.UtcNow;
 
-                // Atualizar última atividade
-                session.UpdatedAt = DateTime.UtcNow;
+                if (timeUntilExpiry < renewalThreshold)
+                {
+                    var oldExpiry = session.ExpiresAt;
 
-                // Sliding expiration - renovar tempo de expiração
-                session.ExpiresAt = DateTime.UtcNow.AddHours(SessionExpirationHours);
+                    session.UpdatedAt = DateTime.UtcNow;
+                    session.ExpiresAt = DateTime.UtcNow.AddHours(SessionExpirationHours);
 
-                _context.SaveChanges();
+                    _context.SaveChanges();
 
-                Log.Debug("SESSION_RENEWED: Sessão {SessionToken} renovada para usuário {UserId} - Expirava em: {OldExpiry}, Nova expiração: {NewExpiry}",
-                    token, session.UserId, oldExpiry, session.ExpiresAt);
+                    Log.Debug("SESSION_RENEWED: Sessão {SessionToken} renovada para usuário {UserId} - Expirava em: {OldExpiry}, Nova expiração: {NewExpiry}",
+                        token, session.UserId, oldExpiry, session.ExpiresAt);
+                }
             }
             else
             {
