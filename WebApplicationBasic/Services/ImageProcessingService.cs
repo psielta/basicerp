@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
+using Serilog;
 
 namespace WebApplicationBasic.Services
 {
@@ -91,6 +92,8 @@ namespace WebApplicationBasic.Services
             }
             catch (Exception ex)
             {
+                Log.Error(ex, "IMAGE_PROCESSING_ERROR: Erro ao processar imagem com maxWidth={MaxWidth}, maxHeight={MaxHeight}",
+                    maxWidth, maxHeight);
                 throw new Exception($"Erro ao processar imagem: {ex.Message}", ex);
             }
         }

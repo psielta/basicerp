@@ -183,6 +183,7 @@ namespace WebApplicationBasic.Controllers
                 }
                 catch (Exception ex)
                 {
+                    Log.Error(ex, "PROFILE_IMAGE_UPLOAD_ERROR: Erro ao fazer upload de imagem de perfil para usuário {UserId}", CurrentUserId);
                     ModelState.AddModelError("ImageFile", $"Erro ao fazer upload da imagem: {ex.Message}");
                     return View(model);
                 }
