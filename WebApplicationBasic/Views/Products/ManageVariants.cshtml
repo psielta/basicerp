@@ -95,11 +95,19 @@
                         @Html.ActionLink("Editar", "EditVariant", new { id = variant.Id }, new { @class = "btn btn-sm btn-outline-secondary" })
                         @if (variant.IsActive)
                         {
-                            @Html.ActionLink("Desativar", "ToggleVariant", new { id = variant.Id }, new { @class = "btn btn-sm btn-warning text-dark", onclick = "return confirm('Deseja desativar esta variante?');" })
+                            using (Html.BeginForm("ToggleVariant", "Products", new { id = variant.Id }, FormMethod.Post, new { style = "display:inline;" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-warning text-dark" onclick="return confirm('Deseja desativar esta variante?');">Desativar</button>
+                            }
                         }
                         else
                         {
-                            @Html.ActionLink("Ativar", "ToggleVariant", new { id = variant.Id }, new { @class = "btn btn-sm btn-success" })
+                            using (Html.BeginForm("ToggleVariant", "Products", new { id = variant.Id }, FormMethod.Post, new { style = "display:inline;" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-success">Ativar</button>
+                            }
                         }
                     </td>
                 </tr>
