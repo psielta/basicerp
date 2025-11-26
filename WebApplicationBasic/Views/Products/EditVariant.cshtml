@@ -83,15 +83,10 @@
                                 <div class="input-group">
                                     <span class="input-group-text">R$</span>
                                     <input type="text"
-                                           class="form-control"
+                                           class="form-control decimal-field"
                                            name="Cost"
                                            id="Cost"
-                                           value="@Model.Cost"
-                                           data-val="true"
-                                           data-val-number="O campo Custo deve ser um número."
-                                           data-val-range="O campo Custo deve estar entre 0 e 999999.99"
-                                           data-val-range-min="0"
-                                           data-val-range-max="999999.99" />
+                                           value="@(Model.Cost.HasValue ? Model.Cost.Value.ToString("F2").Replace(".", ",") : "")" />
                                 </div>
                                 @Html.ValidationMessageFor(m => m.Cost, "", new { @class = "text-danger" })
                             </div>
@@ -125,10 +120,10 @@
                                 @Html.LabelFor(m => m.Weight)
                                 <div class="input-group">
                                     <input type="text"
-                                           class="form-control"
+                                           class="form-control decimal-field"
                                            name="Weight"
                                            id="Weight"
-                                           value="@Model.Weight" />
+                                           value="@(Model.Weight.HasValue ? Model.Weight.Value.ToString("F3").Replace(".", ",") : "")" />
                                     <span class="input-group-text">kg</span>
                                 </div>
                                 @Html.ValidationMessageFor(m => m.Weight, "", new { @class = "text-danger" })
@@ -140,10 +135,10 @@
                                 @Html.LabelFor(m => m.Height)
                                 <div class="input-group">
                                     <input type="text"
-                                           class="form-control"
+                                           class="form-control decimal-field"
                                            name="Height"
                                            id="Height"
-                                           value="@Model.Height" />
+                                           value="@(Model.Height.HasValue ? Model.Height.Value.ToString("F2").Replace(".", ",") : "")" />
                                     <span class="input-group-text">cm</span>
                                 </div>
                                 @Html.ValidationMessageFor(m => m.Height, "", new { @class = "text-danger" })
@@ -155,10 +150,10 @@
                                 @Html.LabelFor(m => m.Width)
                                 <div class="input-group">
                                     <input type="text"
-                                           class="form-control"
+                                           class="form-control decimal-field"
                                            name="Width"
                                            id="Width"
-                                           value="@Model.Width" />
+                                           value="@(Model.Width.HasValue ? Model.Width.Value.ToString("F2").Replace(".", ",") : "")" />
                                     <span class="input-group-text">cm</span>
                                 </div>
                                 @Html.ValidationMessageFor(m => m.Width, "", new { @class = "text-danger" })
@@ -170,10 +165,10 @@
                                 @Html.LabelFor(m => m.Length)
                                 <div class="input-group">
                                     <input type="text"
-                                           class="form-control"
+                                           class="form-control decimal-field"
                                            name="Length"
                                            id="Length"
-                                           value="@Model.Length" />
+                                           value="@(Model.Length.HasValue ? Model.Length.Value.ToString("F2").Replace(".", ",") : "")" />
                                     <span class="input-group-text">cm</span>
                                 </div>
                                 @Html.ValidationMessageFor(m => m.Length, "", new { @class = "text-danger" })
@@ -199,5 +194,27 @@
 </div>
 
 @section Scripts {
-    @Scripts.Render("~/bundles/jqueryval")
+    <script>
+        $(document).ready(function () {
+            // Ao submeter o formulário, converter ponto para vírgula nos campos decimais
+            $('form').on('submit', function () {
+                $('.decimal-field').each(function () {
+                    var val = $(this).val();
+                    if (val) {
+                        // Converte ponto para vírgula para o backend pt-BR
+                        $(this).val(val.replace('.', ','));
+                    }
+                });
+            });
+
+            // Permitir que o usuário digite tanto ponto quanto vírgula
+            $('.decimal-field').on('blur', function () {
+                var val = $(this).val();
+                if (val) {
+                    // Normaliza para exibição com vírgula
+                    $(this).val(val.replace('.', ','));
+                }
+            });
+        });
+    </script>
 }

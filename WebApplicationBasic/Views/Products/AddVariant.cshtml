@@ -14,40 +14,41 @@
         @if (!ViewData.ModelState.IsValid)
         {
             <div class="alert alert-danger">
+                <h5><i class="bi bi-exclamation-triangle"></i> Erros de Valida&#231;&#227;o</h5>
                 @Html.ValidationSummary(false, "", new { @class = "mb-0" })
             </div>
         }
 
-        @using (Html.BeginForm("AddVariant", "Products", FormMethod.Post))
-        {
+        <form action="@Url.Action("AddVariant", "Products")" method="post" id="addVariantForm">
             @Html.AntiForgeryToken()
             @Html.HiddenFor(m => m.ProductTemplateId)
             @Html.HiddenFor(m => m.ProductName)
 
-            <text>
-            <!-- Seleção de Atributos de Variação -->
-            </text>
-            if (Model.VariantAttributes != null && Model.VariantAttributes.Any())
+            <!-- Sele&#231;&#227;o de Atributos de Varia&#231;&#227;o -->
+            @if (Model.VariantAttributes != null && Model.VariantAttributes.Any())
             {
                 <div class="card border-primary mb-3">
                     <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="bi bi-tags"></i> Atributos de Variação</h5>
+                        <h5 class="mb-0"><i class="bi bi-tags"></i> Atributos de Varia&#231;&#227;o</h5>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted mb-3">Selecione os valores dos atributos para esta variante:</p>
+                        <p class="text-muted mb-3">
+                            Selecione <strong>um valor de cada atributo</strong> para criar a variante.
+                            Combina&#231;&#245;es j&#225; existentes ser&#227;o indicadas.
+                        </p>
 
                         @for (int i = 0; i < Model.VariantAttributes.Count; i++)
                         {
                             var attr = Model.VariantAttributes[i];
-                            <div class="mb-4">
-                                <h6>@attr.AttributeName</h6>
+                            <div class="mb-4 attribute-group" data-attribute-id="@attr.AttributeId" data-group-index="@i">
+                                <h6><i class="bi bi-tag"></i> @attr.AttributeName <span class="text-danger">*</span></h6>
                                 <div class="d-flex flex-wrap gap-2">
                                     @foreach (var value in attr.SelectedValues)
                                     {
-                                        <div class="form-check form-check-inline">
+                                        <div class="form-check">
                                             <input type="radio"
-                                                   class="form-check-input"
-                                                   name="SelectedAttributeValues"
+                                                   class="form-check-input attribute-radio"
+                                                   name="AttrGroup_@(attr.AttributeId)"
                                                    value="@value.Id"
                                                    id="attr_@(attr.AttributeId)_@(value.Id)"
                                                    data-attribute-id="@attr.AttributeId"
@@ -59,13 +60,19 @@
                                         </div>
                                     }
                                 </div>
+                                <!-- Hidden field para enviar o valor selecionado -->
+                                <input type="hidden" class="selected-attribute-value" name="SelectedAttributeValues" value="" data-attribute-id="@attr.AttributeId" />
                             </div>
                         }
 
-                        <div class="alert alert-info mt-3">
+                        <div id="combination-status" class="alert alert-info mt-3" style="display: none;">
                             <i class="bi bi-info-circle"></i>
-                            <strong>Preview:</strong>
-                            <span id="variant-preview">Selecione os atributos acima</span>
+                            <span id="combination-message"></span>
+                        </div>
+
+                        <div class="alert alert-secondary mt-3">
+                            <strong>Preview da Variante:</strong>
+                            <span id="variant-preview" class="ms-2">Selecione os atributos acima</span>
                         </div>
                     </div>
                 </div>
@@ -74,9 +81,10 @@
             {
                 <div class="alert alert-warning mb-3">
                     <i class="bi bi-exclamation-triangle"></i>
-                    Este produto não possui atributos de variação cadastrados.
-                    @Html.ActionLink("Cadastre atributos", "Index", "ProductAttributes")
-                    para poder criar variantes baseadas em características.
+                    Este produto n&#227;o possui atributos de varia&#231;&#227;o configurados.
+                    Voc&#234; pode adicionar uma variante simples (apenas com SKU) ou
+                    @Html.ActionLink("editar o produto", "EditWizard", new { id = Model.ProductTemplateId })
+                    para configurar atributos de varia&#231;&#227;o.
                 </div>
             }
 
@@ -89,16 +97,17 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                @Html.LabelFor(m => m.Sku)
-                                @Html.TextBoxFor(m => m.Sku, new { @class = "form-control", placeholder = "Ex: PROD-VAR-001" })
-                                <small class="form-text text-muted">Código único de identificação (SKU)</small>
+                                @Html.LabelFor(m => m.Sku) <span class="text-danger">*</span>
+                                @Html.TextBoxFor(m => m.Sku, new { @class = "form-control", placeholder = "Ex: PROD-VAR-001", id = "Sku" })
+                                <small class="form-text text-muted">C&#243;digo &#250;nico de identifica&#231;&#227;o (SKU)</small>
                                 @Html.ValidationMessageFor(m => m.Sku, "", new { @class = "text-danger" })
+                                <div id="sku-validation-message" class="text-danger" style="display: none;"></div>
                             </div>
 
                             <div class="mb-3">
                                 @Html.LabelFor(m => m.Name)
                                 @Html.TextBoxFor(m => m.Name, new { @class = "form-control", placeholder = "Opcional" })
-                                <small class="form-text text-muted">Se vazio, usará o nome do produto</small>
+                                <small class="form-text text-muted">Se vazio, usar&#225; o nome do produto + atributos</small>
                                 @Html.ValidationMessageFor(m => m.Name, "", new { @class = "text-danger" })
                             </div>
 
@@ -125,7 +134,7 @@
                                 @Html.ValidationMessageFor(m => m.Barcode, "", new { @class = "text-danger" })
                             </div>
 
-                            <div class="form-check">
+                            <div class="form-check mt-4">
                                 @Html.CheckBoxFor(m => m.IsActive, new { @class = "form-check-input" })
                                 <label class="form-check-label">
                                     @Html.DisplayNameFor(m => m.IsActive)
@@ -136,10 +145,10 @@
                 </div>
             </div>
 
-            <!-- Dimensões -->
+            <!-- Dimens&#245;es -->
             <div class="card mb-3">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-rulers"></i> Dimensões e Peso</h5>
+                    <h5 class="mb-0"><i class="bi bi-rulers"></i> Dimens&#245;es e Peso</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -190,46 +199,257 @@
                 </div>
             </div>
 
-            <!-- Botões -->
+            <!-- Bot&#245;es -->
             <div class="d-flex justify-content-between">
                 <div>
                     @Html.ActionLink("Cancelar", "ManageVariants", new { id = Model.ProductTemplateId }, new { @class = "btn btn-secondary" })
                 </div>
                 <div>
-                    <button type="submit" class="btn btn-success">
+                    <button type="submit" class="btn btn-success" id="submitBtn">
                         <i class="bi bi-plus-circle"></i> Adicionar Variante
                     </button>
                 </div>
             </div>
-        }
+        </form>
     </div>
 </div>
 
 @section Scripts {
-    @Scripts.Render("~/bundles/jqueryval")
-
     <script>
         $(document).ready(function () {
-            // Update preview when attributes are selected
-            $('input[name="SelectedAttributeValues"]').change(function () {
+            // Dados do servidor
+            var existingCombinations = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ExistingAttributeCombinations));
+            var existingSkusRaw = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ExistingSkus));
+            var existingSkus = existingSkusRaw.map(function(s) { return s.toUpperCase(); });
+            var totalAttributes = @(Model.VariantAttributes.Count);
+
+            console.log('Existing combinations:', existingCombinations);
+            console.log('Total attributes:', totalAttributes);
+
+            // Quando um radio button e selecionado, atualizar o hidden field correspondente
+            $('.attribute-radio').on('change', function() {
+                var $radio = $(this);
+                var attrId = $radio.data('attribute-id');
+                var selectedValue = $radio.val();
+
+                // Atualizar o hidden field do grupo
+                $radio.closest('.attribute-group').find('.selected-attribute-value').val(selectedValue);
+
                 updatePreview();
+                validateCombination();
+            });
+
+            // Validar SKU ao sair do campo
+            $('#Sku').on('blur', function () {
+                validateSku();
+            });
+
+            // Validar SKU enquanto digita (com debounce)
+            var skuTimeout;
+            $('#Sku').on('input', function () {
+                clearTimeout(skuTimeout);
+                skuTimeout = setTimeout(function () {
+                    validateSku();
+                }, 300);
+            });
+
+            // Validar formulario antes de enviar
+            $('#addVariantForm').submit(function (e) {
+                var isValid = true;
+
+                // Validar SKU
+                if (!validateSku()) {
+                    isValid = false;
+                }
+
+                // Validar combinacao de atributos
+                if (totalAttributes > 0 && !validateCombination()) {
+                    isValid = false;
+                }
+
+                // Validar se um valor de cada atributo foi selecionado
+                if (totalAttributes > 0) {
+                    var missingAttributes = [];
+                    $('.attribute-group').each(function() {
+                        var $group = $(this);
+                        var attrName = $group.find('.attribute-radio').first().data('attribute-name');
+                        if ($group.find('.attribute-radio:checked').length === 0) {
+                            missingAttributes.push(attrName);
+                        }
+                    });
+
+                    if (missingAttributes.length > 0) {
+                        alert('Por favor, selecione um valor para cada atributo de variacao.\nFaltando: ' + missingAttributes.join(', '));
+                        isValid = false;
+                    }
+                }
+
+                // Remover hidden fields vazios antes de submeter
+                $('.selected-attribute-value').each(function() {
+                    if ($(this).val() === '') {
+                        $(this).prop('disabled', true);
+                    }
+                });
+
+                if (!isValid) {
+                    e.preventDefault();
+                    // Reativar hidden fields
+                    $('.selected-attribute-value').prop('disabled', false);
+                    return false;
+                }
             });
 
             function updatePreview() {
                 var selectedAttributes = [];
 
-                $('input[name="SelectedAttributeValues"]:checked').each(function () {
-                    var attrName = $(this).data('attribute-name');
-                    var valueName = $(this).data('value-name');
-                    selectedAttributes.push(attrName + ': ' + valueName);
+                $('.attribute-group').each(function() {
+                    var $checked = $(this).find('.attribute-radio:checked');
+                    if ($checked.length > 0) {
+                        var attrName = $checked.data('attribute-name');
+                        var valueName = $checked.data('value-name');
+                        selectedAttributes.push(attrName + ': ' + valueName);
+                    }
                 });
 
                 if (selectedAttributes.length > 0) {
-                    $('#variant-preview').html(selectedAttributes.join(', '));
+                    $('#variant-preview').html('<strong>' + selectedAttributes.join(', ') + '</strong>');
                 } else {
                     $('#variant-preview').html('Selecione os atributos acima');
                 }
             }
+
+            function validateCombination() {
+                var selectedValues = [];
+
+                $('.attribute-group').each(function() {
+                    var $checked = $(this).find('.attribute-radio:checked');
+                    if ($checked.length > 0) {
+                        selectedValues.push($checked.val());
+                    }
+                });
+
+                console.log('Selected values:', selectedValues);
+
+                // Se nao selecionou todos os atributos, nao valida ainda
+                if (selectedValues.length < totalAttributes) {
+                    $('#combination-status').hide();
+                    $('#submitBtn').prop('disabled', false);
+                    return true;
+                }
+
+                // Ordenar para comparacao (mesma logica do backend)
+                selectedValues.sort();
+                var combinationJson = JSON.stringify(selectedValues);
+
+                console.log('Combination JSON:', combinationJson);
+
+                // Verificar se ja existe
+                var exists = existingCombinations.indexOf(combinationJson) !== -1;
+
+                console.log('Exists:', exists);
+
+                if (exists) {
+                    $('#combination-status')
+                        .removeClass('alert-info alert-success')
+                        .addClass('alert-danger')
+                        .show();
+                    $('#combination-message').html('<strong>Esta combinacao ja existe!</strong> Escolha valores diferentes.');
+                    $('#submitBtn').prop('disabled', true);
+                    return false;
+                } else {
+                    $('#combination-status')
+                        .removeClass('alert-info alert-danger')
+                        .addClass('alert-success')
+                        .show();
+                    $('#combination-message').html('<strong>Combinacao valida!</strong> Esta variante pode ser criada.');
+                    $('#submitBtn').prop('disabled', false);
+                    return true;
+                }
+            }
+
+            function validateSku() {
+                var sku = $('#Sku').val();
+                var $input = $('#Sku');
+                var $message = $('#sku-validation-message');
+
+                if (!sku || sku.trim() === '') {
+                    $input.removeClass('is-invalid is-valid');
+                    $message.hide();
+                    return false; // SKU e obrigatorio
+                }
+
+                var skuUpper = sku.trim().toUpperCase();
+
+                if (existingSkus.indexOf(skuUpper) !== -1) {
+                    $input.addClass('is-invalid').removeClass('is-valid');
+                    $message.text('Este SKU ja existe na organizacao.').show();
+                    return false;
+                } else {
+                    $input.addClass('is-valid').removeClass('is-invalid');
+                    $message.hide();
+                    return true;
+                }
+            }
+
+            // Inicializar
+            updatePreview();
         });
     </script>
+
+    <style>
+        /* Estilos especificos da pagina - compativeis com dark mode */
+        .attribute-group {
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--bs-border-color, #e9ecef);
+            margin-bottom: 15px;
+            background-color: var(--bs-tertiary-bg, #f8f9fa);
+        }
+
+        .attribute-group h6 {
+            margin-bottom: 12px;
+            color: var(--bs-body-color, #495057);
+        }
+
+        .attribute-group .form-check {
+            padding: 8px 12px;
+            border: 1px solid var(--bs-border-color, #dee2e6);
+            border-radius: 4px;
+            transition: all 0.2s;
+            cursor: pointer;
+            background-color: var(--bs-body-bg, #fff);
+        }
+
+        .attribute-group .form-check:hover {
+            background-color: var(--bs-tertiary-bg, #e9ecef);
+            border-color: var(--bs-secondary-color, #adb5bd);
+        }
+
+        .attribute-group .form-check:has(input:checked) {
+            background-color: rgba(13, 110, 253, 0.2);
+            border-color: var(--bs-primary, #0d6efd);
+        }
+
+        .form-check-input:checked + .form-check-label {
+            font-weight: 600;
+        }
+
+        .form-check-label {
+            cursor: pointer;
+            color: var(--bs-body-color, #212529);
+        }
+
+        #variant-preview {
+            font-size: 1.1em;
+        }
+
+        /* Validation visual feedback */
+        .form-control.is-invalid {
+            border-color: #dc3545 !important;
+        }
+
+        .form-control.is-valid {
+            border-color: #198754 !important;
+        }
+    </style>
 }
