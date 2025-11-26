@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using WebApplicationBasic.Filters;
 using WebApplicationBasic.Models.ViewModels;
 using WebApplicationBasic.Services;
+using Serilog;
 
 namespace WebApplicationBasic.Controllers
 {
@@ -155,6 +156,8 @@ namespace WebApplicationBasic.Controllers
             }
             catch (Exception ex)
             {
+                Log.Error(ex, "STOCK_LOCATION_CREATE_ERROR: Erro ao criar local de estoque para organização {OrganizationId} por usuário {UserId}",
+                    CurrentOrganizationId, CurrentUserId);
                 ModelState.AddModelError("", ex.Message);
                 ViewBag.Locations = await _stockService.GetLocationsAsync(CurrentOrganizationId, includeInactive: true);
                 return View("Locations", model);
@@ -226,6 +229,8 @@ namespace WebApplicationBasic.Controllers
             }
             catch (Exception ex)
             {
+                Log.Error(ex, "STOCK_LOCATION_UPDATE_ERROR: Erro ao atualizar local de estoque {LocationId} para organização {OrganizationId} por usuário {UserId}",
+                    model.Id, CurrentOrganizationId, CurrentUserId);
                 ModelState.AddModelError("", ex.Message);
                 return View(model);
             }
@@ -362,6 +367,8 @@ namespace WebApplicationBasic.Controllers
             }
             catch (Exception ex)
             {
+                Log.Error(ex, "STOCK_RESERVATION_RELEASE_ERROR: Erro ao liberar reserva {ReservationId} para organização {OrganizationId} por usuário {UserId}",
+                    id, CurrentOrganizationId, CurrentUserId);
                 TempData["Error"] = ex.Message;
             }
 
@@ -424,6 +431,8 @@ namespace WebApplicationBasic.Controllers
             }
             catch (Exception ex)
             {
+                Log.Error(ex, "STOCK_MOVEMENT_ERROR: Erro ao processar movimento {MovementType} para organização {OrganizationId} por usuário {UserId}",
+                    model.MovementType, CurrentOrganizationId, CurrentUserId);
                 ModelState.AddModelError("", ex.Message);
                 await PopulateOptions(model);
                 ViewBag.Title = GetMovementTitle(model.MovementType);
