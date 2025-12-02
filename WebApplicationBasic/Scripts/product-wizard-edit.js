@@ -4,6 +4,10 @@ $(document).ready(function () {
     var tabs = $('.nav-pills li');
     var tabPanes = $('.tab-pane');
     var newVariantCounter = 0;
+    var totalAttributes = $('.attribute-selection-group').length;
+
+    // Coletar combinações existentes das variantes já salvas
+    var existingCombinations = collectExistingCombinations();
 
     // Initialize wizard
     showTab(currentTab);
@@ -119,9 +123,9 @@ $(document).ready(function () {
                         }
                     });
 
-                    // Check new variants if no active existing variant found
+                    // Check new variants (adicionados via modal)
                     if (!hasActiveVariant) {
-                        $('#new-variants-table input[name*="Variants"][name$=".IsActive"]').each(function () {
+                        $('#new-variants-container input[name*="Variants"][name$=".IsActive"]').each(function () {
                             if ($(this).is(':checked')) {
                                 hasActiveVariant = true;
                                 return false;
@@ -173,295 +177,389 @@ $(document).ready(function () {
         }
     }
 
-    // Variant attributes toggle (for new attributes only)
-    $('.attribute-toggle:not(:disabled)').change(function () {
-        var attributeId = $(this).data('attribute-id');
-        var panel = $(this).closest('.variant-attribute-panel');
-        var valuesDiv = panel.find('.attribute-values');
+    // ========================================
+    // MODAL DE ADICIONAR NOVA VARIAÇÃO
+    // ========================================
 
-        if ($(this).is(':checked')) {
-            panel.addClass('active');
-            valuesDiv.slideDown();
-        } else {
-            panel.removeClass('active');
-            valuesDiv.slideUp();
-            valuesDiv.find('input[type="checkbox"]:not(:disabled)').prop('checked', false);
-        }
+    // Quando um radio button é selecionado no modal
+    $('.new-variant-attr-radio').on('change', function () {
+        updateModalPreview();
+        validateModalCombination();
+        updateAddButtonState();
     });
 
-    // Generate new variants button
-    $('#generate-new-variants').click(function () {
-        generateNewVariants();
+    // Validar SKU no modal
+    $('#newVariantSku').on('input', function () {
+        validateModalSku();
+        updateAddButtonState();
     });
 
-    // Generate new variants function
-    function generateNewVariants() {
-        // Coletar atributos em uso (valores disabled/checked) e novos valores selecionados
-        var attributesInUse = [];
-        var newAttributeValues = [];
+    // Reset modal quando abrir
+    $('#addVariantModal').on('show.bs.modal', function () {
+        resetModal();
+    });
 
-        $('.variant-attribute-panel.active').each(function () {
-            var attributeId = $(this).data('attribute-id');
-            var attributeName = $(this).find('.attribute-toggle').siblings('strong').text().replace('Em uso', '').trim();
+    // Botão de adicionar variação
+    $('#btnAddNewVariant').on('click', function () {
+        addNewVariantFromModal();
+    });
 
-            // Valores já em uso (disabled e checked)
-            var existingValues = [];
-            $(this).find('.attribute-value-checkbox:checked:disabled').each(function () {
-                existingValues.push({
-                    id: $(this).val(),
-                    name: $(this).data('value-name')
-                });
-            });
+    function resetModal() {
+        // Limpar seleções de atributos
+        $('.new-variant-attr-radio').prop('checked', false);
 
-            // Novos valores selecionados (checked mas não disabled)
-            var newValues = [];
-            $(this).find('.attribute-value-checkbox:checked:not(:disabled)').each(function () {
-                newValues.push({
-                    id: $(this).val(),
-                    name: $(this).data('value-name')
-                });
-            });
+        // Limpar campos
+        $('#newVariantSku').val('').removeClass('is-valid is-invalid');
+        $('#newVariantSkuFeedback').text('').hide();
+        $('#newVariantCost').val('');
+        $('#newVariantName').val('');
+        $('#newVariantBarcode').val('');
+        $('#newVariantWeight').val('');
+        $('#newVariantHeight').val('');
+        $('#newVariantWidth').val('');
+        $('#newVariantLength').val('');
+        $('#newVariantIsActive').prop('checked', true);
 
-            if (existingValues.length > 0 || newValues.length > 0) {
-                attributesInUse.push({
-                    id: attributeId,
-                    name: attributeName,
-                    existingValues: existingValues,
-                    newValues: newValues,
-                    allValues: existingValues.concat(newValues)
-                });
-            }
+        // Resetar preview e status
+        $('#modal-variant-preview').html('Selecione os atributos acima');
+        $('#modal-combination-status').hide().removeClass('alert-success alert-danger alert-info');
 
-            if (newValues.length > 0) {
-                newAttributeValues.push({
-                    id: attributeId,
-                    name: attributeName,
-                    values: newValues
-                });
-            }
-        });
+        // Desabilitar botão
+        $('#btnAddNewVariant').prop('disabled', true);
 
-        if (newAttributeValues.length === 0) {
-            alert('Selecione pelo menos um novo valor de atributo para gerar variações adicionais.');
-            return;
-        }
-
-        // Gerar combinações que incluam pelo menos um novo valor
-        // Estratégia: gerar todas as combinações possíveis e filtrar apenas as que contêm novos valores
-        var allCombinations = generateAllCombinations(attributesInUse);
-
-        // Filtrar apenas combinações que contêm pelo menos um valor novo
-        var newCombinations = allCombinations.filter(function(combo) {
-            return combo.some(function(item) {
-                return item.isNew;
-            });
-        });
-
-        if (newCombinations.length === 0) {
-            alert('Não há novas combinações para gerar. Verifique se selecionou novos valores de atributos.');
-            return;
-        }
-
-        // Usar newCombinations como combinations para o resto da função
-        var combinations = newCombinations;
-
-        // Contar variantes existentes (apenas linhas principais, não as de detalhes)
-        var existingVariantCount = $('#existing-variants table tbody tr.variant-row').length;
+        // Gerar SKU sugerido
         var skuBase = $('#Name').val() ? $('#Name').val().substring(0, 3).toUpperCase() : 'PRD';
-
-        // Coletar todos os SKUs existentes para evitar duplicidade
         var existingSkus = collectAllExistingSkus();
-
-        // Display new variants com estrutura expansível
-        $('#new-variants-container').show();
-
-        var tableHtml = '<p class="text-muted small">';
-        tableHtml += '<i class="bi bi-info-circle"></i> ';
-        tableHtml += 'Clique no botão <i class="bi bi-chevron-right"></i> para expandir e editar todos os detalhes da variante.';
-        tableHtml += '</p>';
-        tableHtml += '<table class="table table-hover variant-table">';
-        tableHtml += '<thead><tr>';
-        tableHtml += '<th style="width: 40px;"></th>';
-        tableHtml += '<th style="width: 180px;">SKU</th>';
-        tableHtml += '<th>Atributos</th>';
-        tableHtml += '<th style="width: 120px;">Custo (R$)</th>';
-        tableHtml += '<th style="width: 80px;" class="text-center">Ativo</th>';
-        tableHtml += '</tr></thead>';
-        tableHtml += '<tbody>';
-
-        combinations.forEach(function (combo, index) {
-            var variantIndex = existingVariantCount + newVariantCounter + index;
-            // Gerar SKU único que não exista ainda
-            var sku = generateUniqueSku(skuBase, existingSkus);
-            existingSkus.push(sku.toUpperCase()); // Adicionar ao array para evitar duplicidade nas próximas iterações
-            var description = combo.map(function (c) { return c.attributeName + ': ' + c.valueName; }).join(', ');
-            var detailsId = 'new-variant-details-' + variantIndex;
-
-            // LINHA PRINCIPAL (variant-row)
-            tableHtml += '<tr class="variant-row" data-variant-index="' + variantIndex + '">';
-
-            // Coluna 1: Botão expandir
-            tableHtml += '<td>';
-            tableHtml += '<button type="button" class="btn btn-sm btn-outline-secondary toggle-details" data-target="#' + detailsId + '">';
-            tableHtml += '<i class="bi bi-chevron-right"></i>';
-            tableHtml += '</button>';
-            tableHtml += '</td>';
-
-            // Coluna 2: SKU
-            tableHtml += '<td>';
-            tableHtml += '<input type="text" name="Variants[' + variantIndex + '].Sku" class="form-control form-control-sm" value="' + sku + '" required />';
-            tableHtml += '</td>';
-
-            // Coluna 3: Atributos (exibição + hidden fields)
-            tableHtml += '<td><strong>' + description + '</strong>';
-            combo.forEach(function (attr, attrIndex) {
-                tableHtml += '<input type="hidden" name="Variants[' + variantIndex + '].VariantAttributeValuesList[' + attrIndex + '].AttributeId" value="' + attr.attributeId + '" />';
-                tableHtml += '<input type="hidden" name="Variants[' + variantIndex + '].VariantAttributeValuesList[' + attrIndex + '].AttributeValueId" value="' + attr.valueId + '" />';
-            });
-            tableHtml += '</td>';
-
-            // Coluna 4: Custo
-            tableHtml += '<td>';
-            tableHtml += '<input type="text" name="Variants[' + variantIndex + '].Cost" class="form-control form-control-sm" placeholder="0.00" />';
-            tableHtml += '</td>';
-
-            // Coluna 5: Ativo
-            tableHtml += '<td class="text-center">';
-            tableHtml += '<input type="checkbox" name="Variants[' + variantIndex + '].IsActive" value="true" class="form-check-input" checked />';
-            tableHtml += '<input type="hidden" name="Variants[' + variantIndex + '].IsActive" value="false" />';
-            tableHtml += '</td>';
-
-            tableHtml += '</tr>';
-
-            // LINHA EXPANSÍVEL (variant-details-row)
-            tableHtml += '<tr class="variant-details-row" id="' + detailsId + '" style="display: none;">';
-            tableHtml += '<td></td>';
-            tableHtml += '<td colspan="4">';
-            tableHtml += '<div class="card">';
-            tableHtml += '<div class="card-body">';
-            tableHtml += '<div class="row">';
-
-            // Coluna Esquerda
-            tableHtml += '<div class="col-md-6">';
-            tableHtml += '<div class="mb-3">';
-            tableHtml += '<label class="form-label">Nome da Variante</label>';
-            tableHtml += '<input type="text" name="Variants[' + variantIndex + '].Name" class="form-control form-control-sm" value="' + description + '" placeholder="Opcional" />';
-            tableHtml += '</div>';
-            tableHtml += '<div class="mb-3">';
-            tableHtml += '<label class="form-label">Descrição</label>';
-            tableHtml += '<textarea name="Variants[' + variantIndex + '].Description" class="form-control form-control-sm" rows="2" placeholder="Opcional">' + description + '</textarea>';
-            tableHtml += '</div>';
-            tableHtml += '<div class="mb-3">';
-            tableHtml += '<label class="form-label">Código de Barras</label>';
-            tableHtml += '<input type="text" name="Variants[' + variantIndex + '].Barcode" class="form-control form-control-sm" placeholder="EAN/GTIN" />';
-            tableHtml += '</div>';
-            tableHtml += '</div>';
-
-            // Coluna Direita: Dimensões
-            tableHtml += '<div class="col-md-6">';
-            tableHtml += '<h6 class="mb-3">Dimensões e Peso</h6>';
-            tableHtml += '<div class="row">';
-            tableHtml += '<div class="col-md-6">';
-            tableHtml += '<div class="mb-3">';
-            tableHtml += '<label class="form-label">Peso</label>';
-            tableHtml += '<div class="input-group input-group-sm">';
-            tableHtml += '<input type="text" name="Variants[' + variantIndex + '].Weight" class="form-control" placeholder="0.000" />';
-            tableHtml += '<span class="input-group-text">kg</span>';
-            tableHtml += '</div>';
-            tableHtml += '</div>';
-            tableHtml += '</div>';
-            tableHtml += '<div class="col-md-6">';
-            tableHtml += '<div class="mb-3">';
-            tableHtml += '<label class="form-label">Altura</label>';
-            tableHtml += '<div class="input-group input-group-sm">';
-            tableHtml += '<input type="text" name="Variants[' + variantIndex + '].Height" class="form-control" placeholder="cm" />';
-            tableHtml += '<span class="input-group-text">cm</span>';
-            tableHtml += '</div>';
-            tableHtml += '</div>';
-            tableHtml += '</div>';
-            tableHtml += '</div>';
-            tableHtml += '<div class="row">';
-            tableHtml += '<div class="col-md-6">';
-            tableHtml += '<div class="mb-3">';
-            tableHtml += '<label class="form-label">Largura</label>';
-            tableHtml += '<div class="input-group input-group-sm">';
-            tableHtml += '<input type="text" name="Variants[' + variantIndex + '].Width" class="form-control" placeholder="cm" />';
-            tableHtml += '<span class="input-group-text">cm</span>';
-            tableHtml += '</div>';
-            tableHtml += '</div>';
-            tableHtml += '</div>';
-            tableHtml += '<div class="col-md-6">';
-            tableHtml += '<div class="mb-3">';
-            tableHtml += '<label class="form-label">Comprimento</label>';
-            tableHtml += '<div class="input-group input-group-sm">';
-            tableHtml += '<input type="text" name="Variants[' + variantIndex + '].Length" class="form-control" placeholder="cm" />';
-            tableHtml += '<span class="input-group-text">cm</span>';
-            tableHtml += '</div>';
-            tableHtml += '</div>';
-            tableHtml += '</div>';
-            tableHtml += '</div>';
-            tableHtml += '</div>';
-
-            tableHtml += '</div>'; // Fecha row
-            tableHtml += '</div>'; // Fecha card-body
-            tableHtml += '</div>'; // Fecha card
-            tableHtml += '</td>';
-            tableHtml += '</tr>';
-        });
-
-        tableHtml += '</tbody></table>';
-        $('#new-variants-table').html(tableHtml);
-
-        // Bind eventos de toggle para as novas variantes
-        $('#new-variants-table .toggle-details').click(function (e) {
-            e.stopPropagation();
-            var targetId = $(this).data('target');
-            var detailsRow = $(targetId);
-
-            if (detailsRow.is(':visible')) {
-                detailsRow.hide();
-                $(this).removeClass('expanded');
-            } else {
-                detailsRow.show();
-                $(this).addClass('expanded');
-            }
-        });
-
-        newVariantCounter += combinations.length;
-        alert('Foram geradas ' + combinations.length + ' novas variações. Revise antes de salvar.');
+        var suggestedSku = generateUniqueSku(skuBase, existingSkus);
+        $('#newVariantSku').val(suggestedSku);
+        validateModalSku();
     }
 
-    // Gera todas as combinações possíveis marcando quais valores são novos
-    function generateAllCombinations(attributes) {
-        if (attributes.length === 0) return [];
-        if (attributes.length === 1) {
-            return attributes[0].allValues.map(function (v) {
-                var isNew = attributes[0].newValues.some(function(nv) { return nv.id === v.id; });
-                return [{
-                    attributeId: attributes[0].id,
-                    attributeName: attributes[0].name,
-                    valueId: v.id,
-                    valueName: v.name,
-                    isNew: isNew
-                }];
-            });
+    function updateModalPreview() {
+        var selectedAttributes = [];
+
+        $('.attribute-selection-group').each(function () {
+            var $checked = $(this).find('.new-variant-attr-radio:checked');
+            if ($checked.length > 0) {
+                var attrName = $checked.data('attribute-name');
+                var valueName = $checked.data('value-name');
+                selectedAttributes.push(attrName + ': ' + valueName);
+            }
+        });
+
+        if (selectedAttributes.length > 0) {
+            $('#modal-variant-preview').html('<strong>' + selectedAttributes.join(', ') + '</strong>');
+        } else {
+            $('#modal-variant-preview').html('Selecione os atributos acima');
+        }
+    }
+
+    function validateModalCombination() {
+        var selectedValues = [];
+
+        $('.attribute-selection-group').each(function () {
+            var $checked = $(this).find('.new-variant-attr-radio:checked');
+            if ($checked.length > 0) {
+                selectedValues.push($checked.val());
+            }
+        });
+
+        // Se não selecionou todos os atributos, não valida ainda
+        if (selectedValues.length < totalAttributes) {
+            $('#modal-combination-status').hide();
+            return { valid: true, complete: false };
         }
 
-        var result = [];
-        var restCombinations = generateAllCombinations(attributes.slice(1));
-        attributes[0].allValues.forEach(function (v) {
-            var isNew = attributes[0].newValues.some(function(nv) { return nv.id === v.id; });
-            restCombinations.forEach(function (p) {
-                result.push([{
-                    attributeId: attributes[0].id,
-                    attributeName: attributes[0].name,
-                    valueId: v.id,
-                    valueName: v.name,
-                    isNew: isNew
-                }].concat(p));
-            });
+        // Ordenar para comparação
+        selectedValues.sort();
+        var combinationJson = JSON.stringify(selectedValues);
+
+        // Verificar se já existe (nas variantes existentes ou nas novas adicionadas)
+        var allCombinations = existingCombinations.concat(collectNewVariantCombinations());
+        var exists = allCombinations.indexOf(combinationJson) !== -1;
+
+        if (exists) {
+            $('#modal-combination-status')
+                .removeClass('alert-info alert-success')
+                .addClass('alert-danger')
+                .html('<i class="bi bi-exclamation-triangle"></i> <strong>Esta combinação já existe!</strong> Escolha valores diferentes.')
+                .show();
+            return { valid: false, complete: true };
+        } else {
+            $('#modal-combination-status')
+                .removeClass('alert-info alert-danger')
+                .addClass('alert-success')
+                .html('<i class="bi bi-check-circle"></i> <strong>Combinação válida!</strong> Esta variação pode ser criada.')
+                .show();
+            return { valid: true, complete: true };
+        }
+    }
+
+    function validateModalSku() {
+        var sku = $('#newVariantSku').val();
+        var $input = $('#newVariantSku');
+        var $feedback = $('#newVariantSkuFeedback');
+
+        if (!sku || sku.trim() === '') {
+            $input.removeClass('is-invalid is-valid');
+            $feedback.hide();
+            return false;
+        }
+
+        var skuUpper = sku.trim().toUpperCase();
+        var existingSkus = collectAllExistingSkus().map(function (s) { return s.toUpperCase(); });
+
+        if (existingSkus.indexOf(skuUpper) !== -1) {
+            $input.addClass('is-invalid').removeClass('is-valid');
+            $feedback.text('Este SKU já existe.').show();
+            return false;
+        } else {
+            $input.addClass('is-valid').removeClass('is-invalid');
+            $feedback.hide();
+            return true;
+        }
+    }
+
+    function updateAddButtonState() {
+        var combinationResult = validateModalCombination();
+        var skuValid = validateModalSku();
+
+        // Verificar se todos os atributos foram selecionados
+        var allAttributesSelected = true;
+        $('.attribute-selection-group').each(function () {
+            if ($(this).find('.new-variant-attr-radio:checked').length === 0) {
+                allAttributesSelected = false;
+                return false;
+            }
         });
-        return result;
+
+        var canAdd = combinationResult.valid && combinationResult.complete && skuValid && allAttributesSelected;
+        $('#btnAddNewVariant').prop('disabled', !canAdd);
+    }
+
+    function addNewVariantFromModal() {
+        // Coletar dados do modal
+        var selectedAttrs = [];
+        var description = [];
+
+        $('.attribute-selection-group').each(function () {
+            var $checked = $(this).find('.new-variant-attr-radio:checked');
+            if ($checked.length > 0) {
+                selectedAttrs.push({
+                    attributeId: $checked.data('attribute-id'),
+                    attributeName: $checked.data('attribute-name'),
+                    valueId: $checked.val(),
+                    valueName: $checked.data('value-name')
+                });
+                description.push($checked.data('attribute-name') + ': ' + $checked.data('value-name'));
+            }
+        });
+
+        var sku = $('#newVariantSku').val().trim();
+        var cost = $('#newVariantCost').val();
+        var name = $('#newVariantName').val() || description.join(', ');
+        var barcode = $('#newVariantBarcode').val();
+        var weight = $('#newVariantWeight').val();
+        var height = $('#newVariantHeight').val();
+        var width = $('#newVariantWidth').val();
+        var length = $('#newVariantLength').val();
+        var isActive = $('#newVariantIsActive').is(':checked');
+        var descriptionText = description.join(', ');
+
+        // Calcular índice da nova variante
+        var existingVariantCount = $('#existing-variants table tbody tr.variant-row').length;
+        var newVariantCount = $('#new-variants-container table tbody tr.variant-row').length;
+        var variantIndex = existingVariantCount + newVariantCount;
+
+        // Se não existe tabela de novas variantes, criar
+        if ($('#new-variants-container table').length === 0) {
+            var tableHtml = '<hr /><h4><i class="bi bi-plus-circle"></i> Novas Variações a Adicionar</h4>';
+            tableHtml += '<p class="text-muted small"><i class="bi bi-info-circle"></i> Clique no botão <i class="bi bi-chevron-right"></i> para expandir e editar detalhes.</p>';
+            tableHtml += '<table class="table table-hover variant-table">';
+            tableHtml += '<thead><tr>';
+            tableHtml += '<th style="width: 40px;"></th>';
+            tableHtml += '<th style="width: 180px;">SKU</th>';
+            tableHtml += '<th>Atributos</th>';
+            tableHtml += '<th style="width: 120px;">Custo (R$)</th>';
+            tableHtml += '<th style="width: 80px;" class="text-center">Ativo</th>';
+            tableHtml += '<th style="width: 60px;"></th>';
+            tableHtml += '</tr></thead>';
+            tableHtml += '<tbody></tbody></table>';
+            $('#new-variants-container').html(tableHtml);
+        }
+
+        var detailsId = 'new-variant-details-' + variantIndex;
+
+        // Criar linha da nova variante
+        var rowHtml = '<tr class="variant-row" data-variant-index="' + variantIndex + '">';
+
+        // Botão expandir
+        rowHtml += '<td>';
+        rowHtml += '<button type="button" class="btn btn-sm btn-outline-secondary toggle-details-new" data-target="#' + detailsId + '">';
+        rowHtml += '<i class="bi bi-chevron-right"></i>';
+        rowHtml += '</button>';
+        rowHtml += '</td>';
+
+        // SKU
+        rowHtml += '<td>';
+        rowHtml += '<input type="text" name="Variants[' + variantIndex + '].Sku" class="form-control form-control-sm" value="' + escapeHtml(sku) + '" required />';
+        rowHtml += '</td>';
+
+        // Atributos
+        rowHtml += '<td><strong>' + escapeHtml(descriptionText) + '</strong>';
+        selectedAttrs.forEach(function (attr, attrIndex) {
+            rowHtml += '<input type="hidden" name="Variants[' + variantIndex + '].VariantAttributeValuesList[' + attrIndex + '].AttributeId" value="' + attr.attributeId + '" />';
+            rowHtml += '<input type="hidden" name="Variants[' + variantIndex + '].VariantAttributeValuesList[' + attrIndex + '].AttributeValueId" value="' + attr.valueId + '" />';
+        });
+        rowHtml += '</td>';
+
+        // Custo
+        rowHtml += '<td>';
+        rowHtml += '<input type="text" name="Variants[' + variantIndex + '].Cost" class="form-control form-control-sm" value="' + escapeHtml(cost) + '" placeholder="0.00" />';
+        rowHtml += '</td>';
+
+        // Ativo
+        rowHtml += '<td class="text-center">';
+        rowHtml += '<input type="checkbox" name="Variants[' + variantIndex + '].IsActive" value="true" class="form-check-input" ' + (isActive ? 'checked' : '') + ' />';
+        rowHtml += '<input type="hidden" name="Variants[' + variantIndex + '].IsActive" value="false" />';
+        rowHtml += '</td>';
+
+        // Botão remover
+        rowHtml += '<td>';
+        rowHtml += '<button type="button" class="btn btn-sm btn-outline-danger remove-new-variant" data-index="' + variantIndex + '" title="Remover">';
+        rowHtml += '<i class="bi bi-trash"></i>';
+        rowHtml += '</button>';
+        rowHtml += '</td>';
+
+        rowHtml += '</tr>';
+
+        // Linha de detalhes expansível
+        rowHtml += '<tr class="variant-details-row" id="' + detailsId + '" style="display: none;">';
+        rowHtml += '<td></td>';
+        rowHtml += '<td colspan="5">';
+        rowHtml += '<div class="card"><div class="card-body"><div class="row">';
+
+        // Coluna esquerda
+        rowHtml += '<div class="col-md-6">';
+        rowHtml += '<div class="mb-3"><label class="form-label">Nome da Variante</label>';
+        rowHtml += '<input type="text" name="Variants[' + variantIndex + '].Name" class="form-control form-control-sm" value="' + escapeHtml(name) + '" placeholder="Opcional" /></div>';
+        rowHtml += '<div class="mb-3"><label class="form-label">Descrição</label>';
+        rowHtml += '<textarea name="Variants[' + variantIndex + '].Description" class="form-control form-control-sm" rows="2" placeholder="Opcional">' + escapeHtml(descriptionText) + '</textarea></div>';
+        rowHtml += '<div class="mb-3"><label class="form-label">Código de Barras</label>';
+        rowHtml += '<input type="text" name="Variants[' + variantIndex + '].Barcode" class="form-control form-control-sm" value="' + escapeHtml(barcode) + '" placeholder="EAN/GTIN" /></div>';
+        rowHtml += '</div>';
+
+        // Coluna direita (dimensões)
+        rowHtml += '<div class="col-md-6">';
+        rowHtml += '<h6 class="mb-3">Dimensões e Peso</h6>';
+        rowHtml += '<div class="row">';
+        rowHtml += '<div class="col-md-6"><div class="mb-3"><label class="form-label">Peso</label><div class="input-group input-group-sm">';
+        rowHtml += '<input type="text" name="Variants[' + variantIndex + '].Weight" class="form-control" value="' + escapeHtml(weight) + '" placeholder="0.000" /><span class="input-group-text">kg</span></div></div></div>';
+        rowHtml += '<div class="col-md-6"><div class="mb-3"><label class="form-label">Altura</label><div class="input-group input-group-sm">';
+        rowHtml += '<input type="text" name="Variants[' + variantIndex + '].Height" class="form-control" value="' + escapeHtml(height) + '" placeholder="cm" /><span class="input-group-text">cm</span></div></div></div>';
+        rowHtml += '</div><div class="row">';
+        rowHtml += '<div class="col-md-6"><div class="mb-3"><label class="form-label">Largura</label><div class="input-group input-group-sm">';
+        rowHtml += '<input type="text" name="Variants[' + variantIndex + '].Width" class="form-control" value="' + escapeHtml(width) + '" placeholder="cm" /><span class="input-group-text">cm</span></div></div></div>';
+        rowHtml += '<div class="col-md-6"><div class="mb-3"><label class="form-label">Comprimento</label><div class="input-group input-group-sm">';
+        rowHtml += '<input type="text" name="Variants[' + variantIndex + '].Length" class="form-control" value="' + escapeHtml(length) + '" placeholder="cm" /><span class="input-group-text">cm</span></div></div></div>';
+        rowHtml += '</div></div>';
+
+        rowHtml += '</div></div></div>';
+        rowHtml += '</td></tr>';
+
+        // Adicionar à tabela
+        $('#new-variants-container table tbody').append(rowHtml);
+
+        // Atualizar lista de combinações existentes
+        existingCombinations = collectExistingCombinations();
+
+        // Fechar modal
+        $('#addVariantModal').modal('hide');
+
+        // Scroll para a nova variante
+        $('html, body').animate({
+            scrollTop: $('#new-variants-container').offset().top - 100
+        }, 300);
+
+        newVariantCounter++;
+    }
+
+    // Função para coletar combinações das variantes existentes (do servidor)
+    function collectExistingCombinations() {
+        var combinations = [];
+
+        $('#existing-variants table tbody tr.variant-row').each(function () {
+            var combo = [];
+            $(this).find('input[name*="VariantAttributeValuesList"][name$=".AttributeValueId"]').each(function () {
+                combo.push($(this).val());
+            });
+            if (combo.length > 0) {
+                combo.sort();
+                combinations.push(JSON.stringify(combo));
+            }
+        });
+
+        return combinations;
+    }
+
+    // Função para coletar combinações das novas variantes (adicionadas via modal)
+    function collectNewVariantCombinations() {
+        var combinations = [];
+
+        $('#new-variants-container table tbody tr.variant-row').each(function () {
+            var combo = [];
+            $(this).find('input[name*="VariantAttributeValuesList"][name$=".AttributeValueId"]').each(function () {
+                combo.push($(this).val());
+            });
+            if (combo.length > 0) {
+                combo.sort();
+                combinations.push(JSON.stringify(combo));
+            }
+        });
+
+        return combinations;
+    }
+
+    // Eventos delegados para elementos dinâmicos
+    $(document).on('click', '.toggle-details-new', function (e) {
+        e.stopPropagation();
+        var targetId = $(this).data('target');
+        var detailsRow = $(targetId);
+
+        if (detailsRow.is(':visible')) {
+            detailsRow.hide();
+            $(this).removeClass('expanded').find('i').removeClass('bi-chevron-down').addClass('bi-chevron-right');
+        } else {
+            detailsRow.show();
+            $(this).addClass('expanded').find('i').removeClass('bi-chevron-right').addClass('bi-chevron-down');
+        }
+    });
+
+    $(document).on('click', '.remove-new-variant', function () {
+        var $btn = $(this);
+        var index = $btn.data('index');
+
+        if (confirm('Tem certeza que deseja remover esta variação?')) {
+            // Remover linha principal e linha de detalhes
+            $btn.closest('tr.variant-row').next('tr.variant-details-row').remove();
+            $btn.closest('tr.variant-row').remove();
+
+            // Se não há mais variantes novas, remover a tabela
+            if ($('#new-variants-container table tbody tr').length === 0) {
+                $('#new-variants-container').empty();
+            }
+
+            // Atualizar lista de combinações
+            existingCombinations = collectExistingCombinations();
+        }
+    });
+
+    // Helper para escape de HTML
+    function escapeHtml(text) {
+        if (!text) return '';
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // Coleta todos os SKUs existentes (variantes existentes + novas já geradas)
@@ -476,8 +574,8 @@ $(document).ready(function () {
             }
         });
 
-        // SKUs das novas variantes já geradas nesta sessão
-        $('#new-variants-table input[name*="Variants"][name$=".Sku"]').each(function () {
+        // SKUs das novas variantes adicionadas via modal
+        $('#new-variants-container input[name*="Variants"][name$=".Sku"]').each(function () {
             var sku = $(this).val();
             if (sku && sku.trim() !== '') {
                 skus.push(sku.trim().toUpperCase());
@@ -506,34 +604,6 @@ $(document).ready(function () {
         return sku;
     }
 
-    // Cartesian product for combinations (mantido para compatibilidade)
-    function cartesianProduct(attributes) {
-        if (attributes.length === 0) return [];
-        if (attributes.length === 1) {
-            return attributes[0].values.map(function (v) {
-                return [{
-                    attributeId: attributes[0].id,
-                    attributeName: attributes[0].name,
-                    valueId: v.id,
-                    valueName: v.name
-                }];
-            });
-        }
-
-        var result = [];
-        var restProduct = cartesianProduct(attributes.slice(1));
-        attributes[0].values.forEach(function (v) {
-            restProduct.forEach(function (p) {
-                result.push([{
-                    attributeId: attributes[0].id,
-                    attributeName: attributes[0].name,
-                    valueId: v.id,
-                    valueName: v.name
-                }].concat(p));
-            });
-        });
-        return result;
-    }
 
     // Generate summary
     function generateSummary() {
@@ -564,14 +634,14 @@ $(document).ready(function () {
                 if (sku && sku.trim() !== '') allSkus.push(sku);
             });
 
-            // SKUs novos
-            $('#new-variants-table input[name*="Variants"][name$=".Sku"]').each(function () {
+            // SKUs novos (adicionados via modal)
+            $('#new-variants-container input[name*="Variants"][name$=".Sku"]').each(function () {
                 var sku = $(this).val();
                 if (sku && sku.trim() !== '') allSkus.push(sku);
             });
 
             var existingVariantCount = $('#existing-variants table tbody tr.variant-row').length;
-            var newVariantCount = $('#new-variants-table tbody tr.variant-row').length;
+            var newVariantCount = $('#new-variants-container table tbody tr.variant-row').length;
             var totalVariants = existingVariantCount + newVariantCount;
 
             summary += '<dt>Total de Variantes:</dt><dd>' + totalVariants + '</dd>';

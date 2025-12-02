@@ -215,64 +215,53 @@
                 <!-- Step 3: Atributos de Variação (apenas para produtos configuráveis) -->
                 <div class="tab-pane" id="step3">
                     <h3>Atributos de Variação</h3>
-                    <div class="alert alert-warning">
-                        <strong>Atenção:</strong> Modificar atributos de variação pode afetar as variantes existentes.
-                        Para adicionar novas variações, use o botão "Gerar Novas Variações" na próxima aba.
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        Os atributos abaixo são utilizados para criar variações do produto.
+                        Para gerenciar atributos, acesse @Html.ActionLink("Atributos de Variação", "Index", "ProductAttributes", null, new { target = "_blank" }).
                     </div>
 
-                    <div id="variant-attributes">
-                        @if (Model.VariantAttributes != null && Model.VariantAttributes.Any())
+                    <div id="variant-attributes-summary">
+                        @if (Model.VariantAttributes != null && Model.VariantAttributes.Any(a => a.IsUsedForVariants))
                         {
-                            for (int i = 0; i < Model.VariantAttributes.Count; i++)
-                            {
-                                var attr = Model.VariantAttributes[i];
-                                <div class="card variant-attribute-panel @(attr.IsUsedForVariants ? "active" : "")"
-                                     data-attribute-id="@attr.AttributeId">
-                                    <div class="card-header">
-                                        <label>
-                                            <input type="checkbox"
-                                                   class="form-check-input attribute-toggle"
-                                                   data-attribute-id="@attr.AttributeId"
-                                                   @(attr.IsUsedForVariants ? "checked disabled" : "") />
-                                            <strong>@attr.AttributeName</strong>
-                                            @if (attr.IsUsedForVariants)
-                                            {
-                                                <span class="badge bg-info">Em uso</span>
-                                            }
-                                        </label>
-                                    </div>
-                                    <div class="card-body attribute-values" style="@(attr.IsUsedForVariants ? "" : "display: none;")">
-                                        @Html.HiddenFor(m => m.VariantAttributes[i].AttributeId)
-                                        @Html.HiddenFor(m => m.VariantAttributes[i].AttributeName)
-                                        @Html.HiddenFor(m => m.VariantAttributes[i].AttributeCode)
-                                        @foreach (var value in attr.SelectedValues)
-                                        {
-                                            <label class="form-check form-check-inline">
-                                                <input type="checkbox"
-                                                       class="form-check-input attribute-value-checkbox"
-                                                       name="VariantAttributes[@i].SelectedValues"
-                                                       value="@value.Id"
-                                                       data-attribute-id="@attr.AttributeId"
-                                                       data-attribute-name="@attr.AttributeName"
-                                                       data-value-name="@value.Value"
-                                                       @(value.IsSelected ? "checked disabled" : "") />
-                                                <span class="form-check-label">@value.Value</span>
-                                                @if (value.IsSelected)
-                                                {
-                                                    <span class="badge bg-success">Em uso</span>
+                            <div class="row">
+                                @foreach (var attr in Model.VariantAttributes.Where(a => a.IsUsedForVariants))
+                                {
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card">
+                                            <div class="card-header bg-primary text-white">
+                                                <strong>@attr.AttributeName</strong>
+                                            </div>
+                                            <div class="card-body">
+                                                @{
+                                                    var usedValues = attr.SelectedValues.Where(v => v.IsSelected).ToList();
                                                 }
-                                            </label>
-                                        }
+                                                @if (usedValues.Any())
+                                                {
+                                                    <p class="mb-1"><strong>Valores em uso:</strong></p>
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                        @foreach (var value in usedValues)
+                                                        {
+                                                            <span class="badge bg-success">@value.Value</span>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <p class="text-muted mb-0">Nenhum valor em uso</p>
+                                                }
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            }
+                                }
+                            </div>
                         }
                         else
                         {
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle"></i>
-                                Nenhum atributo de variação cadastrado.
-                                @Html.ActionLink("Cadastrar atributos de variação", "Index", "ProductAttributes", null, new { target = "_blank" })
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                Este produto ainda não possui atributos de variação em uso.
+                                Adicione variações na próxima aba para definir os atributos.
                             </div>
                         }
                     </div>
@@ -410,13 +399,19 @@
                 <div class="tab-pane" id="step4">
                     <h3>Variações do Produto</h3>
 
-                    <div class="p-3 bg-body-secondary rounded">
-                        <p><strong>Variações Existentes:</strong> @(Model.Variants?.Count ?? 0)</p>
-                        <button type="button" class="btn btn-primary" id="generate-new-variants">
-                            <i class="bi bi-plus"></i> Gerar Novas Variações
-                        </button>
-                        @Html.ActionLink("Gerenciar Variantes Detalhadamente", "ManageVariants",
-                            new { id = Model.Id }, new { @class = "btn btn-info", target = "_blank" })
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-body-secondary rounded">
+                                <p class="mb-2"><strong>Variações Existentes:</strong> @(Model.Variants?.Count ?? 0)</p>
+                                @Html.ActionLink("Gerenciar Variantes Detalhadamente", "ManageVariants",
+                                    new { id = Model.Id }, new { @class = "btn btn-outline-info btn-sm", target = "_blank" })
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <button type="button" class="btn btn-success btn-lg w-100" data-bs-toggle="modal" data-bs-target="#addVariantModal">
+                                <i class="bi bi-plus-circle"></i> Adicionar Nova Variação
+                            </button>
+                        </div>
                     </div>
 
                     <div id="existing-variants">
@@ -577,10 +572,173 @@
                         }
                     </div>
 
-                    <div id="new-variants-container" style="display: none;">
-                        <hr />
-                        <h4>Novas Variações a Adicionar</h4>
-                        <div id="new-variants-table"></div>
+                    <div id="new-variants-container">
+                        <!-- Novas variações adicionadas via modal aparecerão aqui -->
+                    </div>
+                </div>
+
+                <!-- Modal para adicionar nova variação -->
+                <div class="modal fade" id="addVariantModal" tabindex="-1" aria-labelledby="addVariantModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-success text-white">
+                                <h5 class="modal-title" id="addVariantModalLabel">
+                                    <i class="bi bi-plus-circle"></i> Adicionar Nova Variação
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Seleção de Atributos -->
+                                @if (Model.VariantAttributes != null && Model.VariantAttributes.Any())
+                                {
+                                    <div class="mb-4">
+                                        <h6 class="mb-3"><i class="bi bi-tags"></i> Selecione os Atributos da Variação</h6>
+                                        <p class="text-muted small">Selecione <strong>um valor de cada atributo</strong> para criar a variação.</p>
+
+                                        @for (int i = 0; i < Model.VariantAttributes.Count; i++)
+                                        {
+                                            var attr = Model.VariantAttributes[i];
+                                            <div class="mb-3 attribute-selection-group" data-attribute-id="@attr.AttributeId" data-attribute-name="@attr.AttributeName">
+                                                <label class="form-label fw-bold">
+                                                    <i class="bi bi-tag"></i> @attr.AttributeName <span class="text-danger">*</span>
+                                                </label>
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    @foreach (var value in attr.SelectedValues)
+                                                    {
+                                                        <div class="form-check">
+                                                            <input type="radio"
+                                                                   class="form-check-input new-variant-attr-radio"
+                                                                   name="NewVariantAttr_@(attr.AttributeId)"
+                                                                   value="@value.Id"
+                                                                   id="newVariantAttr_@(attr.AttributeId)_@(value.Id)"
+                                                                   data-attribute-id="@attr.AttributeId"
+                                                                   data-attribute-name="@attr.AttributeName"
+                                                                   data-value-name="@value.Value" />
+                                                            <label class="form-check-label" for="newVariantAttr_@(attr.AttributeId)_@(value.Id)">
+                                                                @value.Value
+                                                            </label>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+
+                                        <div id="modal-combination-status" class="alert mt-3" style="display: none;"></div>
+
+                                        <div class="alert alert-secondary mt-3">
+                                            <strong>Preview:</strong>
+                                            <span id="modal-variant-preview" class="ms-2">Selecione os atributos acima</span>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-warning">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                        Nenhum atributo de variação cadastrado.
+                                        @Html.ActionLink("Cadastrar atributos", "Index", "ProductAttributes", null, new { target = "_blank" })
+                                    </div>
+                                }
+
+                                <hr />
+
+                                <!-- Dados da nova variação -->
+                                <h6 class="mb-3"><i class="bi bi-box"></i> Dados da Variação</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">SKU <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="newVariantSku" placeholder="Ex: PROD-VAR-001" />
+                                            <div id="newVariantSkuFeedback" class="invalid-feedback"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Custo (R$)</label>
+                                            <input type="text" class="form-control" id="newVariantCost" placeholder="0.00" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Nome (opcional)</label>
+                                            <input type="text" class="form-control" id="newVariantName" placeholder="Nome da variação" />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Código de Barras</label>
+                                            <input type="text" class="form-control" id="newVariantBarcode" placeholder="EAN/GTIN" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Dimensões (colapsável) -->
+                                <div class="accordion" id="dimensionsAccordion">
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#dimensionsCollapse">
+                                                <i class="bi bi-rulers me-2"></i> Dimensões e Peso (opcional)
+                                            </button>
+                                        </h2>
+                                        <div id="dimensionsCollapse" class="accordion-collapse collapse" data-bs-parent="#dimensionsAccordion">
+                                            <div class="accordion-body">
+                                                <div class="row">
+                                                    <div class="col-md-3">
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Peso</label>
+                                                            <div class="input-group input-group-sm">
+                                                                <input type="text" class="form-control" id="newVariantWeight" placeholder="0.000" />
+                                                                <span class="input-group-text">kg</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Altura</label>
+                                                            <div class="input-group input-group-sm">
+                                                                <input type="text" class="form-control" id="newVariantHeight" placeholder="0" />
+                                                                <span class="input-group-text">cm</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Largura</label>
+                                                            <div class="input-group input-group-sm">
+                                                                <input type="text" class="form-control" id="newVariantWidth" placeholder="0" />
+                                                                <span class="input-group-text">cm</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Comprimento</label>
+                                                            <div class="input-group input-group-sm">
+                                                                <input type="text" class="form-control" id="newVariantLength" placeholder="0" />
+                                                                <span class="input-group-text">cm</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-check mt-3">
+                                    <input type="checkbox" class="form-check-input" id="newVariantIsActive" checked />
+                                    <label class="form-check-label" for="newVariantIsActive">Variação Ativa</label>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-success" id="btnAddNewVariant" disabled>
+                                    <i class="bi bi-plus-circle"></i> Adicionar Variação
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -644,7 +802,7 @@
 }
 
 @section Scripts {
-    <script src="~/Scripts/product-wizard-edit.js?v=2.0"></script>
+    <script src="~/Scripts/product-wizard-edit.js?v=3.0"></script>
 
     <style>
         .wizard-container {
@@ -868,6 +1026,66 @@
                 line-height: 24px;
                 font-size: 12px;
             }
+        }
+
+        /* Estilos do modal de adicionar variação */
+        .attribute-selection-group {
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--bs-border-color, #e9ecef);
+            margin-bottom: 15px;
+            background-color: var(--bs-tertiary-bg, #f8f9fa);
+        }
+
+        .attribute-selection-group .form-check {
+            padding: 8px 12px;
+            border: 1px solid var(--bs-border-color, #dee2e6);
+            border-radius: 4px;
+            transition: all 0.2s;
+            cursor: pointer;
+            background-color: var(--bs-body-bg, #fff);
+        }
+
+        .attribute-selection-group .form-check:hover {
+            background-color: var(--bs-tertiary-bg, #e9ecef);
+            border-color: var(--bs-secondary-color, #adb5bd);
+        }
+
+        .attribute-selection-group .form-check:has(input:checked) {
+            background-color: rgba(25, 135, 84, 0.2);
+            border-color: var(--bs-success, #198754);
+        }
+
+        .attribute-selection-group .form-check-input:checked + .form-check-label {
+            font-weight: 600;
+            color: var(--bs-success, #198754);
+        }
+
+        #modal-variant-preview {
+            font-size: 1.1em;
+        }
+
+        /* Botão remover variante */
+        .remove-new-variant {
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .remove-new-variant:hover {
+            opacity: 1;
+        }
+
+        /* Indicador visual de nova variação */
+        #new-variants-container h4 {
+            color: var(--bs-success, #198754);
+        }
+
+        #new-variants-container .variant-row {
+            background-color: rgba(25, 135, 84, 0.05);
+        }
+
+        #new-variants-container .variant-row:hover {
+            background-color: rgba(25, 135, 84, 0.1);
         }
     </style>
 }
