@@ -6,6 +6,21 @@ $(document).ready(function () {
     var newVariantCounter = 0;
     var totalAttributes = $('.attribute-selection-group').length;
 
+    // Obter token CSRF para requisições AJAX
+    var csrfToken = $('input[name="__RequestVerificationToken"]').val();
+
+    // Configurar AJAX para enviar token CSRF em todas as requisições
+    $.ajaxSetup({
+        beforeSend: function (xhr, settings) {
+            if (settings.type === 'POST' && csrfToken) {
+                settings.data = settings.data ? settings.data + '&__RequestVerificationToken=' + encodeURIComponent(csrfToken) : '__RequestVerificationToken=' + encodeURIComponent(csrfToken);
+            }
+        }
+    });
+
+    // ID do produto sendo editado (para excluir da validação de nome)
+    var productId = $('#Id').val();
+
     // Coletar combinações existentes das variantes já salvas
     var existingCombinations = collectExistingCombinations();
 
@@ -156,6 +171,44 @@ $(document).ready(function () {
         return true;
     }
 
+    // Validar nome do produto em tempo real
+    var nameValidationTimeout = null;
+    $('#Name').on('input', function () {
+        var $input = $(this);
+        var name = $input.val();
+
+        clearTimeout(nameValidationTimeout);
+
+        if (!name || name.trim() === '') {
+            $input.removeClass('is-valid is-invalid');
+            $input.next('.invalid-feedback').remove();
+            return;
+        }
+
+        nameValidationTimeout = setTimeout(function () {
+            $.ajax({
+                url: '/Products/ValidateProductName',
+                type: 'POST',
+                data: { name: name.trim(), excludeProductId: productId },
+                success: function (response) {
+                    if ($input.val().trim() === name.trim()) {
+                        if (response.valid) {
+                            $input.addClass('is-valid').removeClass('is-invalid');
+                            $input.next('.invalid-feedback').remove();
+                        } else {
+                            $input.addClass('is-invalid').removeClass('is-valid');
+                            if (!$input.next('.invalid-feedback').length) {
+                                $input.after('<div class="invalid-feedback" style="display:block;">' + response.message + '</div>');
+                            } else {
+                                $input.next('.invalid-feedback').text(response.message);
+                            }
+                        }
+                    }
+                }
+            });
+        }, 400);
+    });
+
     // Category selection
     $('#category-tree input[type="checkbox"]').change(function () {
         updateSelectedCategories();
@@ -188,9 +241,29 @@ $(document).ready(function () {
         updateAddButtonState();
     });
 
-    // Validar SKU no modal
+    // Validar SKU no modal (com debounce para evitar muitas requisições)
+    var skuValidationTimeout = null;
+    var lastValidatedSku = '';
+    var isValidatingSkuRemote = false;
+    var lastRemoteValidationResult = null;
+
     $('#newVariantSku').on('input', function () {
-        validateModalSku();
+        var sku = $(this).val().trim();
+
+        // Validação local primeiro (rápida)
+        var localValid = validateModalSkuLocal();
+
+        // Se passou na validação local, fazer validação no servidor
+        if (localValid && sku !== '' && sku !== lastValidatedSku) {
+            clearTimeout(skuValidationTimeout);
+            lastRemoteValidationResult = null; // Reset resultado anterior
+            skuValidationTimeout = setTimeout(function () {
+                validateModalSkuRemote(sku);
+            }, 300); // Debounce de 300ms
+        } else if (!localValid || sku === '') {
+            lastRemoteValidationResult = null;
+        }
+
         updateAddButtonState();
     });
 
@@ -227,12 +300,20 @@ $(document).ready(function () {
         // Desabilitar botão
         $('#btnAddNewVariant').prop('disabled', true);
 
+        // Resetar variáveis de validação remota
+        lastValidatedSku = '';
+        lastRemoteValidationResult = null;
+        isValidatingSkuRemote = false;
+        clearTimeout(skuValidationTimeout);
+
         // Gerar SKU sugerido
         var skuBase = $('#Name').val() ? $('#Name').val().substring(0, 3).toUpperCase() : 'PRD';
         var existingSkus = collectAllExistingSkus();
         var suggestedSku = generateUniqueSku(skuBase, existingSkus);
         $('#newVariantSku').val(suggestedSku);
-        validateModalSku();
+
+        // Validar o SKU sugerido remotamente
+        validateModalSkuRemote(suggestedSku);
     }
 
     function updateModalPreview() {
@@ -295,7 +376,8 @@ $(document).ready(function () {
         }
     }
 
-    function validateModalSku() {
+    // Validação local de SKU (verifica contra SKUs no formulário)
+    function validateModalSkuLocal() {
         var sku = $('#newVariantSku').val();
         var $input = $('#newVariantSku');
         var $feedback = $('#newVariantSkuFeedback');
@@ -311,18 +393,77 @@ $(document).ready(function () {
 
         if (existingSkus.indexOf(skuUpper) !== -1) {
             $input.addClass('is-invalid').removeClass('is-valid');
-            $feedback.text('Este SKU já existe.').show();
+            $feedback.text('Este SKU já existe no formulário.').show();
             return false;
         } else {
-            $input.addClass('is-valid').removeClass('is-invalid');
+            // Não marcar como válido ainda - aguardar validação remota
+            $input.removeClass('is-invalid');
             $feedback.hide();
             return true;
         }
     }
 
+    // Validação remota de SKU (verifica contra banco de dados)
+    function validateModalSkuRemote(sku) {
+        var $input = $('#newVariantSku');
+        var $feedback = $('#newVariantSkuFeedback');
+
+        isValidatingSkuRemote = true;
+        lastValidatedSku = sku;
+
+        $.ajax({
+            url: '/Products/ValidateSku',
+            type: 'POST',
+            data: { sku: sku },
+            success: function (response) {
+                isValidatingSkuRemote = false;
+                // Verificar se o SKU ainda é o mesmo (usuário pode ter digitado mais)
+                if ($input.val().trim() === sku) {
+                    if (response.valid) {
+                        $input.addClass('is-valid').removeClass('is-invalid');
+                        $feedback.hide();
+                        lastRemoteValidationResult = true;
+                    } else {
+                        $input.addClass('is-invalid').removeClass('is-valid');
+                        $feedback.text(response.message).show();
+                        lastRemoteValidationResult = false;
+                    }
+                    updateAddButtonState();
+                }
+            },
+            error: function () {
+                isValidatingSkuRemote = false;
+                // Em caso de erro, não bloquear - validação local é suficiente
+                lastRemoteValidationResult = true;
+                updateAddButtonState();
+            }
+        });
+    }
+
+    // Função auxiliar para verificar se SKU é válido (local + remoto)
+    function isSkuValid() {
+        var sku = $('#newVariantSku').val();
+        if (!sku || sku.trim() === '') return false;
+
+        // Verificar validação local
+        var skuUpper = sku.trim().toUpperCase();
+        var existingSkus = collectAllExistingSkus().map(function (s) { return s.toUpperCase(); });
+        if (existingSkus.indexOf(skuUpper) !== -1) return false;
+
+        // Se estamos validando remotamente, aguardar
+        if (isValidatingSkuRemote) return false;
+
+        // Se temos resultado de validação remota
+        if (lastRemoteValidationResult === false) return false;
+
+        // Se ainda não validou remotamente este SKU, considerar válido por enquanto
+        // (a validação será feita no debounce)
+        return true;
+    }
+
     function updateAddButtonState() {
         var combinationResult = validateModalCombination();
-        var skuValid = validateModalSku();
+        var skuValid = isSkuValid();
 
         // Verificar se todos os atributos foram selecionados
         var allAttributesSelected = true;
@@ -686,20 +827,103 @@ $(document).ready(function () {
 
     // Form submission
     $('#editProductForm').submit(function (e) {
+        e.preventDefault(); // Sempre prevenir para fazer validação assíncrona
+
+        var $form = $(this);
+        var $submitBtn = $('#submitBtn');
+
         if (!validateUpToTab(tabs.length - 1)) {
-            e.preventDefault();
             alert('Por favor, complete todos os campos obrigatórios.');
             return false;
         }
 
-        // Validar SKUs duplicados antes de enviar
+        // Validar SKUs duplicados localmente primeiro
         var duplicateSkuValidation = validateDuplicateSkus();
         if (!duplicateSkuValidation.valid) {
-            e.preventDefault();
             alert('Existem SKUs duplicados no formulário:\n\n' + duplicateSkuValidation.duplicates.join('\n') + '\n\nPor favor, altere para valores únicos.');
             highlightDuplicateSkus(duplicateSkuValidation.duplicates);
             return false;
         }
+
+        // Desabilitar botão e mostrar loading
+        $submitBtn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Validando...');
+
+        // Primeiro validar nome do produto
+        var productName = $('#Name').val();
+        $.ajax({
+            url: '/Products/ValidateProductName',
+            type: 'POST',
+            data: { name: productName.trim(), excludeProductId: productId },
+            success: function (nameResponse) {
+                if (!nameResponse.valid) {
+                    alert(nameResponse.message);
+                    $('#Name').addClass('is-invalid').removeClass('is-valid');
+                    if (!$('#Name').next('.invalid-feedback').length) {
+                        $('#Name').after('<div class="invalid-feedback" style="display:block;">' + nameResponse.message + '</div>');
+                    }
+                    $submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle"></i> Salvar Alterações');
+                    // Voltar para a primeira aba
+                    currentTab = 0;
+                    showTab(currentTab);
+                    return;
+                }
+
+                // Nome válido, agora validar SKUs de novas variantes
+                var productType = $('#ProductType').val();
+                var skusToValidate = [];
+
+                if (productType === '0') { // Simple
+                    var simpleSku = $('#Sku').val();
+                    var existingVariantId = $('#VariantId').val();
+                    // Para produto simples, só validar se mudou o SKU
+                    if (simpleSku && simpleSku.trim() !== '' && !existingVariantId) {
+                        skusToValidate.push(simpleSku.trim());
+                    }
+                } else { // Configurable - validar apenas novas variantes
+                    $('#new-variants-container input[name*="Variants"][name$=".Sku"]').each(function () {
+                        var sku = $(this).val();
+                        if (sku && sku.trim() !== '') {
+                            skusToValidate.push(sku.trim());
+                        }
+                    });
+                }
+
+                if (skusToValidate.length === 0) {
+                    // Sem SKUs novos para validar, submeter diretamente
+                    $form.off('submit').submit();
+                    return;
+                }
+
+                // Validar SKUs no servidor
+                $.ajax({
+                    url: '/Products/ValidateSkus',
+                    type: 'POST',
+                    data: { skus: skusToValidate },
+                    traditional: true,
+                    success: function (response) {
+                        if (response.valid) {
+                            // Todos SKUs são válidos, submeter formulário
+                            $form.off('submit').submit();
+                        } else {
+                            // Há SKUs duplicados no banco
+                            alert('Os seguintes SKUs já existem no sistema:\n\n' + response.duplicates.join('\n') + '\n\nPor favor, altere para valores únicos.');
+                            highlightDuplicateSkus(response.duplicates);
+                            $submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle"></i> Salvar Alterações');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Erro ao validar SKUs:', status, error);
+                        alert('Erro ao validar SKUs. Tente novamente.');
+                        $submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle"></i> Salvar Alterações');
+                    }
+                });
+            },
+            error: function (xhr, status, error) {
+                console.error('Erro ao validar nome:', status, error);
+                alert('Erro ao validar nome do produto. Tente novamente.');
+                $submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle"></i> Salvar Alterações');
+            }
+        });
     });
 
     // Validar SKUs duplicados no formulário

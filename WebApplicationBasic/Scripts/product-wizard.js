@@ -4,6 +4,18 @@ $(document).ready(function () {
     var tabs = $('.nav-pills li');
     var tabPanes = $('.tab-pane');
 
+    // Obter token CSRF para requisições AJAX
+    var csrfToken = $('input[name="__RequestVerificationToken"]').val();
+
+    // Configurar AJAX para enviar token CSRF em todas as requisições
+    $.ajaxSetup({
+        beforeSend: function (xhr, settings) {
+            if (settings.type === 'POST' && csrfToken) {
+                settings.data = settings.data ? settings.data + '&__RequestVerificationToken=' + encodeURIComponent(csrfToken) : '__RequestVerificationToken=' + encodeURIComponent(csrfToken);
+            }
+        }
+    });
+
     // Initialize wizard
     showTab(currentTab);
 
@@ -442,25 +454,143 @@ $(document).ready(function () {
         $('#product-summary').html(summary);
     }
 
+    // Validar nome do produto em tempo real
+    var nameValidationTimeout = null;
+    $('#Name').on('input', function () {
+        var $input = $(this);
+        var name = $input.val();
+
+        clearTimeout(nameValidationTimeout);
+
+        if (!name || name.trim() === '') {
+            $input.removeClass('is-valid is-invalid');
+            $input.next('.invalid-feedback').remove();
+            return;
+        }
+
+        nameValidationTimeout = setTimeout(function () {
+            $.ajax({
+                url: '/Products/ValidateProductName',
+                type: 'POST',
+                data: { name: name.trim() },
+                success: function (response) {
+                    if ($input.val().trim() === name.trim()) {
+                        if (response.valid) {
+                            $input.addClass('is-valid').removeClass('is-invalid');
+                            $input.next('.invalid-feedback').remove();
+                        } else {
+                            $input.addClass('is-invalid').removeClass('is-valid');
+                            if (!$input.next('.invalid-feedback').length) {
+                                $input.after('<div class="invalid-feedback" style="display:block;">' + response.message + '</div>');
+                            } else {
+                                $input.next('.invalid-feedback').text(response.message);
+                            }
+                        }
+                    }
+                }
+            });
+        }, 400);
+    });
+
     // Form submission
     $('#productForm').submit(function (e) {
+        e.preventDefault(); // Sempre prevenir para fazer validação assíncrona
+
+        var $form = $(this);
+        var $submitBtn = $('#submitBtn');
+
         if (!validateUpToTab(tabs.length - 1)) {
-            e.preventDefault();
             alert('Por favor, complete todos os campos obrigatórios.');
             return false;
         }
 
-        // Validar SKUs duplicados antes de enviar (apenas para produtos configuráveis)
         var productType = $('#ProductType').val();
+
+        // Validar SKUs duplicados localmente primeiro
         if (productType === '1') {
             var duplicateSkuValidation = validateDuplicateSkus();
             if (!duplicateSkuValidation.valid) {
-                e.preventDefault();
                 alert('Existem SKUs duplicados no formulário:\n\n' + duplicateSkuValidation.duplicates.join('\n') + '\n\nPor favor, altere para valores únicos.');
                 highlightDuplicateSkus(duplicateSkuValidation.duplicates);
                 return false;
             }
         }
+
+        // Desabilitar botão e mostrar loading
+        $submitBtn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Validando...');
+
+        // Primeiro validar nome do produto
+        var productName = $('#Name').val();
+        $.ajax({
+            url: '/Products/ValidateProductName',
+            type: 'POST',
+            data: { name: productName.trim() },
+            success: function (nameResponse) {
+                if (!nameResponse.valid) {
+                    alert(nameResponse.message);
+                    $('#Name').addClass('is-invalid').removeClass('is-valid');
+                    if (!$('#Name').next('.invalid-feedback').length) {
+                        $('#Name').after('<div class="invalid-feedback" style="display:block;">' + nameResponse.message + '</div>');
+                    }
+                    $submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle"></i> Salvar Produto');
+                    // Voltar para a primeira aba
+                    currentTab = 0;
+                    showTab(currentTab);
+                    return;
+                }
+
+                // Nome válido, agora validar SKUs
+                var skusToValidate = [];
+                if (productType === '0') { // Simple
+                    var simpleSku = $('#Sku').val();
+                    if (simpleSku && simpleSku.trim() !== '') {
+                        skusToValidate.push(simpleSku.trim());
+                    }
+                } else { // Configurable
+                    $('input[name*="Variants"][name$="].Sku"]').each(function () {
+                        var sku = $(this).val();
+                        if (sku && sku.trim() !== '') {
+                            skusToValidate.push(sku.trim());
+                        }
+                    });
+                }
+
+                if (skusToValidate.length === 0) {
+                    // Sem SKUs para validar, submeter diretamente
+                    $form.off('submit').submit();
+                    return;
+                }
+
+                // Validar SKUs no servidor
+                $.ajax({
+                    url: '/Products/ValidateSkus',
+                    type: 'POST',
+                    data: { skus: skusToValidate },
+                    traditional: true,
+                    success: function (response) {
+                        if (response.valid) {
+                            // Todos SKUs são válidos, submeter formulário
+                            $form.off('submit').submit();
+                        } else {
+                            // Há SKUs duplicados no banco
+                            alert('Os seguintes SKUs já existem no sistema:\n\n' + response.duplicates.join('\n') + '\n\nPor favor, altere para valores únicos.');
+                            highlightDuplicateSkus(response.duplicates);
+                            $submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle"></i> Salvar Produto');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Erro ao validar SKUs:', status, error);
+                        alert('Erro ao validar SKUs. Tente novamente.');
+                        $submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle"></i> Salvar Produto');
+                    }
+                });
+            },
+            error: function (xhr, status, error) {
+                console.error('Erro ao validar nome:', status, error);
+                alert('Erro ao validar nome do produto. Tente novamente.');
+                $submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle"></i> Salvar Produto');
+            }
+        });
     });
 
     // Validar SKUs duplicados no formulário
@@ -521,35 +651,61 @@ $(document).ready(function () {
         });
     }
 
-    // Validar SKU em tempo real ao sair do campo
-    $(document).on('blur', 'input[name*="Variants"][name$="].Sku"]', function () {
+    // Validar SKU em tempo real ao sair do campo (local + servidor)
+    $(document).on('blur', 'input[name*="Variants"][name$="].Sku"], #Sku', function () {
         var currentInput = $(this);
         var currentSku = currentInput.val();
 
         if (!currentSku || currentSku.trim() === '') {
-            currentInput.removeClass('is-invalid');
+            currentInput.removeClass('is-invalid is-valid');
+            currentInput.next('.invalid-feedback').remove();
             return;
         }
 
         var currentSkuUpper = currentSku.trim().toUpperCase();
-        var isDuplicate = false;
+        var isDuplicateLocal = false;
 
+        // Verificar duplicata local (outros campos no formulário)
         $('input[name*="Variants"][name$="].Sku"]').not(currentInput).each(function () {
             var otherSku = $(this).val();
             if (otherSku && otherSku.trim().toUpperCase() === currentSkuUpper) {
-                isDuplicate = true;
+                isDuplicateLocal = true;
                 return false;
             }
         });
 
-        if (isDuplicate) {
-            currentInput.addClass('is-invalid');
+        if (isDuplicateLocal) {
+            currentInput.addClass('is-invalid').removeClass('is-valid');
             if (!currentInput.next('.invalid-feedback').length) {
-                currentInput.after('<div class="invalid-feedback">SKU duplicado</div>');
+                currentInput.after('<div class="invalid-feedback">SKU duplicado no formulário</div>');
+            } else {
+                currentInput.next('.invalid-feedback').text('SKU duplicado no formulário');
             }
-        } else {
-            currentInput.removeClass('is-invalid');
-            currentInput.next('.invalid-feedback').remove();
+            return;
         }
+
+        // Verificar duplicata no servidor
+        $.ajax({
+            url: '/Products/ValidateSku',
+            type: 'POST',
+            data: { sku: currentSku.trim() },
+            success: function (response) {
+                if (response.valid) {
+                    currentInput.addClass('is-valid').removeClass('is-invalid');
+                    currentInput.next('.invalid-feedback').remove();
+                } else {
+                    currentInput.addClass('is-invalid').removeClass('is-valid');
+                    if (!currentInput.next('.invalid-feedback').length) {
+                        currentInput.after('<div class="invalid-feedback">' + response.message + '</div>');
+                    } else {
+                        currentInput.next('.invalid-feedback').text(response.message);
+                    }
+                }
+            },
+            error: function () {
+                // Em caso de erro, não bloquear o usuário
+                currentInput.removeClass('is-invalid is-valid');
+            }
+        });
     });
 });

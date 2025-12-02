@@ -1518,5 +1518,128 @@ namespace WebApplicationBasic.Controllers
 
             return duplicates;
         }
+
+        /// <summary>
+        /// Valida se um SKU já existe no banco de dados (endpoint AJAX)
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<JsonResult> ValidateSku(string sku, Guid? excludeVariantId = null)
+        {
+            if (CurrentOrganizationId == Guid.Empty)
+            {
+                return Json(new { valid = false, message = "Organização não selecionada" });
+            }
+
+            if (string.IsNullOrWhiteSpace(sku))
+            {
+                return Json(new { valid = false, message = "SKU é obrigatório" });
+            }
+
+            var query = Context.ProductVariants
+                .Where(v => v.OrganizationId == CurrentOrganizationId &&
+                           v.DeletedAt == null &&
+                           v.Sku == sku.Trim());
+
+            // Excluir a própria variante se estiver editando
+            if (excludeVariantId.HasValue && excludeVariantId.Value != Guid.Empty)
+            {
+                query = query.Where(v => v.Id != excludeVariantId.Value);
+            }
+
+            var exists = await query.AnyAsync();
+
+            if (exists)
+            {
+                return Json(new { valid = false, message = "Este SKU já existe" });
+            }
+
+            return Json(new { valid = true, message = "" });
+        }
+
+        /// <summary>
+        /// Valida múltiplos SKUs de uma vez (endpoint AJAX)
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<JsonResult> ValidateSkus(List<string> skus)
+        {
+            if (CurrentOrganizationId == Guid.Empty)
+            {
+                return Json(new { valid = false, duplicates = new List<string>(), message = "Organização não selecionada" });
+            }
+
+            if (skus == null || !skus.Any())
+            {
+                return Json(new { valid = true, duplicates = new List<string>(), message = "" });
+            }
+
+            // Normalizar SKUs
+            var normalizedSkus = skus
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
+                .Distinct()
+                .ToList();
+
+            // Buscar SKUs que já existem no banco
+            var existingSkus = await Context.ProductVariants
+                .Where(v => v.OrganizationId == CurrentOrganizationId &&
+                           v.DeletedAt == null &&
+                           normalizedSkus.Contains(v.Sku))
+                .Select(v => v.Sku)
+                .ToListAsync();
+
+            if (existingSkus.Any())
+            {
+                return Json(new {
+                    valid = false,
+                    duplicates = existingSkus,
+                    message = $"Os seguintes SKUs já existem: {string.Join(", ", existingSkus)}"
+                });
+            }
+
+            return Json(new { valid = true, duplicates = new List<string>(), message = "" });
+        }
+
+        /// <summary>
+        /// Valida se um nome de produto já existe (endpoint AJAX)
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<JsonResult> ValidateProductName(string name, Guid? excludeProductId = null)
+        {
+            if (CurrentOrganizationId == Guid.Empty)
+            {
+                return Json(new { valid = false, message = "Organização não selecionada" });
+            }
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return Json(new { valid = false, message = "Nome é obrigatório" });
+            }
+
+            // Gerar slug para comparação
+            var slug = Slugify(name.Trim());
+
+            var query = Context.ProductTemplates
+                .Where(p => p.OrganizationId == CurrentOrganizationId &&
+                           p.DeletedAt == null &&
+                           p.Slug == slug);
+
+            // Excluir o próprio produto se estiver editando
+            if (excludeProductId.HasValue && excludeProductId.Value != Guid.Empty)
+            {
+                query = query.Where(p => p.Id != excludeProductId.Value);
+            }
+
+            var exists = await query.AnyAsync();
+
+            if (exists)
+            {
+                return Json(new { valid = false, message = "Já existe um produto com este nome" });
+            }
+
+            return Json(new { valid = true, message = "" });
+        }
     }
 }
