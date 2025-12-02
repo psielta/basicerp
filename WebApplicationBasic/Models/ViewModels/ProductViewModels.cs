@@ -193,6 +193,9 @@ namespace WebApplicationBasic.Models.ViewModels
 
         // Para exibição
         public string VariantDescription { get; set; }
+
+        // Imagens da variante
+        public List<ProductImageViewModel> Images { get; set; } = new List<ProductImageViewModel>();
     }
 
     // Classe auxiliar para binding de atributos de variação
@@ -369,5 +372,27 @@ namespace WebApplicationBasic.Models.ViewModels
         /// SKUs já existentes na organização (para validação no frontend)
         /// </summary>
         public List<string> ExistingSkus { get; set; } = new List<string>();
+    }
+
+    // ViewModel para exibição de imagem de produto
+    public class ProductImageViewModel
+    {
+        public Guid Id { get; set; }
+        public Guid VariantId { get; set; }
+        public string Url { get; set; }
+        public string AltText { get; set; }
+        public int SortOrder { get; set; }
+        public bool IsMain { get; set; }
+    }
+
+    // ViewModel para upload de imagem
+    public class UploadVariantImageViewModel
+    {
+        [Required(ErrorMessage = "A variante é obrigatória")]
+        public Guid VariantId { get; set; }
+
+        [Display(Name = "Texto alternativo")]
+        [StringLength(500, ErrorMessage = "O texto alternativo deve ter no máximo {1} caracteres")]
+        public string AltText { get; set; }
     }
 }

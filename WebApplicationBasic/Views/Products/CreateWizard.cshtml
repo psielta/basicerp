@@ -20,7 +20,7 @@
     </div>
 }
 
-@using (Html.BeginForm("CreateProduct", "Products", FormMethod.Post, new { id = "productForm" }))
+@using (Html.BeginForm("CreateProduct", "Products", FormMethod.Post, new { id = "productForm", enctype = "multipart/form-data" }))
 {
     @Html.AntiForgeryToken()
     @Html.HiddenFor(m => m.ProductType)
@@ -62,8 +62,13 @@
                         </a>
                     </li>
                     <li>
+                        <a href="#stepImages" data-toggle="tab">
+                            <span class="badge">@(Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple ? "4" : "5")</span> Imagens
+                        </a>
+                    </li>
+                    <li>
                         <a href="#step5" data-toggle="tab">
-                            <span class="badge">@(Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple ? "4" : "5")</span> Revisão
+                            <span class="badge">@(Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple ? "5" : "6")</span> Revisão
                         </a>
                     </li>
                 </ul>
@@ -310,6 +315,35 @@
                     </div>
                 </div>
 
+                <!-- Step Images: Imagens (para produtos simples) -->
+                <div class="tab-pane" id="stepImages">
+                    <h3>Imagens do Produto</h3>
+                    <p class="text-muted">Adicione imagens do seu produto. A primeira imagem será a principal.</p>
+
+                    <div class="create-images-section" data-variant-index="simple">
+                        <div class="card">
+                            <div class="card-header">
+                                <strong>Imagens do Produto</strong>
+                                <span class="badge bg-secondary ms-2 images-count">0 imagens</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="images-preview-grid" id="simple-images-preview">
+                                    <!-- Preview das imagens selecionadas -->
+                                </div>
+
+                                <div class="create-upload-zone" data-variant-index="simple">
+                                    <input type="file" name="ProductImages" class="create-file-input" accept="image/*" multiple style="display: none;" />
+                                    <div class="upload-content">
+                                        <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                                        <p class="mb-0 mt-2">Arraste imagens ou clique para selecionar</p>
+                                        <small class="text-muted">JPG, PNG, GIF, WebP - Máximo 5MB por imagem</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Step 4: Revisão (para produtos simples) -->
                 <div class="tab-pane" id="step4">
                     <h3>Revisão Final</h3>
@@ -361,6 +395,20 @@
                                 <!-- Variantes serão adicionadas via JavaScript -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Step Images: Imagens (para produtos configuráveis) -->
+                <div class="tab-pane" id="stepImages">
+                    <h3>Imagens das Variações</h3>
+                    <p class="text-muted">Adicione imagens para cada variação. A primeira imagem de cada variação será a principal.</p>
+
+                    <div id="variant-images-container">
+                        <div class="alert alert-info" id="no-variants-images-msg">
+                            <i class="bi bi-info-circle"></i>
+                            Gere as variações na aba anterior para poder adicionar imagens.
+                        </div>
+                        <!-- Seções de imagem por variante serão adicionadas via JavaScript -->
                     </div>
                 </div>
 
@@ -424,7 +472,9 @@
 }
 
 @section Scripts {
-    <script src="~/Scripts/product-wizard.js?v=3.0"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <script src="~/Scripts/product-wizard.js?v=4.3"></script>
+    <script src="~/Scripts/product-images-create.js?v=1.3"></script>
 
     <style>
         .wizard-container {
@@ -641,6 +691,112 @@
                 line-height: 24px;
                 font-size: 12px;
             }
+        }
+
+        /* ===== Estilos da Galeria de Imagens (Create) ===== */
+        .create-images-section {
+            margin-bottom: 20px;
+        }
+
+        .images-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            min-height: 20px;
+            padding: 10px 0;
+        }
+
+        .image-preview-item {
+            position: relative;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f8f9fa;
+        }
+
+        .image-preview-item.is-main {
+            border-color: #198754;
+        }
+
+        .image-preview-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .image-preview-item .preview-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .image-preview-item:hover .preview-overlay {
+            opacity: 1;
+        }
+
+        .preview-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .preview-actions button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .btn-preview-main {
+            background: #198754;
+            color: white;
+        }
+
+        .btn-preview-remove {
+            background: #dc3545;
+            color: white;
+        }
+
+        .main-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: #198754;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .create-upload-zone {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+        }
+
+        .create-upload-zone:hover,
+        .create-upload-zone.dragover {
+            border-color: #0d6efd;
+            background: rgba(13, 110, 253, 0.05);
+        }
+
+        .variant-image-section {
+            margin-bottom: 20px;
         }
     </style>
 }

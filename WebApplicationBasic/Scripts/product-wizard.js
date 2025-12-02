@@ -8,9 +8,14 @@ $(document).ready(function () {
     var csrfToken = $('input[name="__RequestVerificationToken"]').val();
 
     // Configurar AJAX para enviar token CSRF em todas as requisições
+    // Nota: não aplicar a FormData (upload de arquivos)
     $.ajaxSetup({
         beforeSend: function (xhr, settings) {
             if (settings.type === 'POST' && csrfToken) {
+                // Não modificar se for FormData (upload de arquivos)
+                if (settings.data instanceof FormData) {
+                    return;
+                }
                 settings.data = settings.data ? settings.data + '&__RequestVerificationToken=' + encodeURIComponent(csrfToken) : '__RequestVerificationToken=' + encodeURIComponent(csrfToken);
             }
         }
@@ -356,6 +361,17 @@ $(document).ready(function () {
         });
 
         $('#variants-table').show();
+
+        // Disparar evento para atualizar seção de imagens
+        var variantsData = combinations.map(function (combo, index) {
+            var skuBase = $('#Name').val() ? $('#Name').val().substring(0, 3).toUpperCase() : 'PRD';
+            return {
+                index: index,
+                sku: skuBase + '-' + (index + 1).toString().padStart(3, '0'),
+                description: combo.map(function (c) { return c.valueName; }).join(' / ')
+            };
+        });
+        $(document).trigger('variantsGenerated', [variantsData]);
     }
 
     // Cartesian product for combinations

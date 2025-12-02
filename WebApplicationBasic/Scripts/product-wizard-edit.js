@@ -10,9 +10,14 @@ $(document).ready(function () {
     var csrfToken = $('input[name="__RequestVerificationToken"]').val();
 
     // Configurar AJAX para enviar token CSRF em todas as requisições
+    // Nota: não aplicar a FormData (upload de arquivos)
     $.ajaxSetup({
         beforeSend: function (xhr, settings) {
             if (settings.type === 'POST' && csrfToken) {
+                // Não modificar se for FormData (upload de arquivos)
+                if (settings.data instanceof FormData) {
+                    return;
+                }
                 settings.data = settings.data ? settings.data + '&__RequestVerificationToken=' + encodeURIComponent(csrfToken) : '__RequestVerificationToken=' + encodeURIComponent(csrfToken);
             }
         }

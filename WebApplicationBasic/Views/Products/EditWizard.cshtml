@@ -63,8 +63,13 @@
                         </a>
                     </li>
                     <li>
+                        <a href="#stepImages" data-toggle="tab">
+                            <span class="badge">@(Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple ? "4" : "5")</span> Imagens
+                        </a>
+                    </li>
+                    <li>
                         <a href="#step5" data-toggle="tab">
-                            <span class="badge">@(Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple ? "4" : "5")</span> Revisão
+                            <span class="badge">@(Model.ProductType == WebApplicationBasic.Models.ViewModels.ProductType.Simple ? "5" : "6")</span> Revisão
                         </a>
                     </li>
                 </ul>
@@ -373,6 +378,35 @@
                         <label class="form-check-label">
                             @Html.DisplayNameFor(m => m.IsActive)
                         </label>
+                    </div>
+                </div>
+
+                <!-- Step Images: Imagens (para produtos simples) -->
+                <div class="tab-pane" id="stepImages">
+                    <h3>Imagens do Produto</h3>
+                    <p class="text-muted">Gerencie as imagens do seu produto. Arraste para reordenar.</p>
+
+                    <div class="variant-images-section" data-variant-id="@Model.VariantId">
+                        <div class="card">
+                            <div class="card-header">
+                                <strong>@Model.Name</strong>
+                                <span class="badge bg-primary ms-2">SKU: @Model.Sku</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="images-grid sortable" id="images-grid-@Model.VariantId">
+                                    <!-- Imagens serão carregadas via JavaScript -->
+                                </div>
+
+                                <div class="upload-zone" data-variant-id="@Model.VariantId">
+                                    <input type="file" class="file-input" accept="image/*" multiple style="display: none;" />
+                                    <div class="upload-content">
+                                        <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                                        <p class="mb-0 mt-2">Arraste imagens ou clique para selecionar</p>
+                                        <small class="text-muted">JPG, PNG, GIF, WebP - Máximo 5MB por imagem</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -742,6 +776,51 @@
                     </div>
                 </div>
 
+                <!-- Step Images: Imagens (para produtos configuráveis) -->
+                <div class="tab-pane" id="stepImages">
+                    <h3>Imagens das Variações</h3>
+                    <p class="text-muted">Gerencie as imagens de cada variação. Arraste para reordenar.</p>
+
+                    @if (Model.Variants != null && Model.Variants.Any())
+                    {
+                        foreach (var variant in Model.Variants)
+                        {
+                            <div class="variant-images-section mb-4" data-variant-id="@variant.Id">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>@variant.VariantDescription</strong>
+                                            <span class="badge bg-primary ms-2">SKU: @variant.Sku</span>
+                                        </div>
+                                        <span class="images-count badge bg-secondary">0 imagens</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="images-grid sortable" id="images-grid-@variant.Id">
+                                            <!-- Imagens serão carregadas via JavaScript -->
+                                        </div>
+
+                                        <div class="upload-zone" data-variant-id="@variant.Id">
+                                            <input type="file" class="file-input" accept="image/*" multiple style="display: none;" />
+                                            <div class="upload-content">
+                                                <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                                                <p class="mb-0 mt-2">Arraste imagens ou clique para selecionar</p>
+                                                <small class="text-muted">JPG, PNG, GIF, WebP - Máximo 5MB por imagem</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            Nenhuma variação cadastrada. Adicione variações na aba anterior para gerenciar imagens.
+                        </div>
+                    }
+                </div>
+
                 <!-- Step 5: Revisão (para produtos configuráveis) -->
                 <div class="tab-pane" id="step5">
                     <h3>Revisão Final</h3>
@@ -802,7 +881,9 @@
 }
 
 @section Scripts {
-    <script src="~/Scripts/product-wizard-edit.js?v=4.0"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <script src="~/Scripts/product-wizard-edit.js?v=5.3"></script>
+    <script src="~/Scripts/product-images.js?v=1.4"></script>
 
     <style>
         .wizard-container {
@@ -1086,6 +1167,200 @@
 
         #new-variants-container .variant-row:hover {
             background-color: rgba(25, 135, 84, 0.1);
+        }
+
+        /* ===== Estilos da Galeria de Imagens ===== */
+        .variant-images-section {
+            margin-bottom: 20px;
+        }
+
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            min-height: 50px;
+            padding: 10px 0;
+        }
+
+        .images-grid.ui-sortable-helper {
+            background: rgba(13, 110, 253, 0.1);
+        }
+
+        .image-item {
+            position: relative;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f8f9fa;
+            transition: all 0.2s ease;
+            cursor: move;
+        }
+
+        .image-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .image-item.is-main {
+            border-color: #198754;
+        }
+
+        .image-item.ui-sortable-placeholder {
+            border: 2px dashed #0d6efd;
+            background: rgba(13, 110, 253, 0.1);
+            visibility: visible !important;
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .image-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .image-item:hover .image-overlay {
+            opacity: 1;
+        }
+
+        .image-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .image-actions button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn-set-main {
+            background: #198754;
+            color: white;
+        }
+
+        .btn-set-main:hover {
+            background: #157347;
+        }
+
+        .btn-delete-image {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-delete-image:hover {
+            background: #bb2d3b;
+        }
+
+        .main-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: #198754;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .upload-zone {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: #0d6efd;
+            background: rgba(13, 110, 253, 0.05);
+        }
+
+        .upload-zone.dragover {
+            background: rgba(13, 110, 253, 0.1);
+        }
+
+        .upload-progress {
+            margin-top: 15px;
+        }
+
+        .upload-progress .progress {
+            height: 8px;
+            border-radius: 4px;
+        }
+
+        .image-item.uploading {
+            opacity: 0.7;
+        }
+
+        .image-item.uploading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            margin: -15px 0 0 -15px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spinner 0.8s linear infinite;
+        }
+
+        @@keyframes spinner {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast notifications */
+        .image-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+        }
+
+        .image-toast.success {
+            background: #198754;
+        }
+
+        .image-toast.error {
+            background: #dc3545;
+        }
+
+        @@keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
     </style>
 }

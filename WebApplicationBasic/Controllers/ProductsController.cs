@@ -1,12 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Web;
 using System.Web.Mvc;
 using EntityFrameworkProject.Models;
 using Microsoft.EntityFrameworkCore;
 using WebApplicationBasic.Filters;
 using WebApplicationBasic.Models.ViewModels;
+using WebApplicationBasic.Services;
 using Serilog;
 
 namespace WebApplicationBasic.Controllers
@@ -14,6 +18,33 @@ namespace WebApplicationBasic.Controllers
     [CustomAuthorize(OrganizationRoles = "admin,owner")]
     public class ProductsController : BaseController
     {
+        private IStorageService _storageService;
+        private IImageProcessingService _imageProcessingService;
+
+        protected IStorageService StorageService
+        {
+            get
+            {
+                if (_storageService == null)
+                {
+                    _storageService = DependencyResolver.Current.GetService<IStorageService>();
+                }
+                return _storageService;
+            }
+        }
+
+        protected IImageProcessingService ImageProcessingService
+        {
+            get
+            {
+                if (_imageProcessingService == null)
+                {
+                    _imageProcessingService = DependencyResolver.Current.GetService<IImageProcessingService>();
+                }
+                return _imageProcessingService;
+            }
+        }
+
         // GET: /Products
         public async Task<ActionResult> Index(string search)
         {
@@ -674,7 +705,7 @@ namespace WebApplicationBasic.Controllers
         // POST: /Products/CreateProduct
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> CreateProduct(ProductFormViewModel model)
+        public async Task<ActionResult> CreateProduct(ProductFormViewModel model, IEnumerable<HttpPostedFileBase> ProductImages)
         {
             if (CurrentOrganizationId == Guid.Empty)
             {
@@ -886,6 +917,9 @@ namespace WebApplicationBasic.Controllers
 
                 Context.ProductTemplates.Add(template);
                 await Context.SaveChangesAsync();
+
+                // Processar imagens após criar o produto
+                await ProcessProductImages(template, model, ProductImages, Request.Files);
 
                 Log.Information("PRODUCT_CREATED: Produto {ProductId} \"{ProductName}\" ({ProductType}) criado com {VariantCount} variante(s) por usuário {UserId} na organização {OrganizationId}",
                     template.Id, template.Name, model.ProductType, template.Variants?.Count ?? 0, CurrentUserId, CurrentOrganizationId);
@@ -1641,5 +1675,464 @@ namespace WebApplicationBasic.Controllers
 
             return Json(new { valid = true, message = "" });
         }
+
+        #region Image Management
+
+        /// <summary>
+        /// Extensões de imagem permitidas
+        /// </summary>
+        private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+
+        /// <summary>
+        /// Tamanho máximo do arquivo em bytes (5MB)
+        /// </summary>
+        private static readonly int MaxFileSize = 5 * 1024 * 1024;
+
+        /// <summary>
+        /// Obtém imagens de uma variante (endpoint AJAX)
+        /// </summary>
+        [HttpGet]
+        public async Task<JsonResult> GetVariantImages(Guid variantId)
+        {
+            if (CurrentOrganizationId == Guid.Empty)
+            {
+                return Json(new { success = false, message = "Organização não selecionada" }, JsonRequestBehavior.AllowGet);
+            }
+
+            // Verificar se a variante pertence à organização
+            var variant = await Context.ProductVariants
+                .FirstOrDefaultAsync(v => v.Id == variantId && v.OrganizationId == CurrentOrganizationId && v.DeletedAt == null);
+
+            if (variant == null)
+            {
+                return Json(new { success = false, message = "Variante não encontrada" }, JsonRequestBehavior.AllowGet);
+            }
+
+            var images = await Context.ProductImages
+                .Where(i => i.VariantId == variantId)
+                .OrderBy(i => i.SortOrder)
+                .Select(i => new ProductImageViewModel
+                {
+                    Id = i.Id,
+                    VariantId = i.VariantId ?? Guid.Empty,
+                    Url = i.Url,
+                    AltText = i.AltText,
+                    SortOrder = i.SortOrder,
+                    IsMain = i.IsMain
+                })
+                .ToListAsync();
+
+            return Json(new { success = true, images = images }, JsonRequestBehavior.AllowGet);
+        }
+
+        /// <summary>
+        /// Upload de imagem para variante (endpoint AJAX)
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<JsonResult> UploadVariantImage(Guid variantId, HttpPostedFileBase file, string altText = null)
+        {
+            if (CurrentOrganizationId == Guid.Empty)
+            {
+                return Json(new { success = false, message = "Organização não selecionada" });
+            }
+
+            if (file == null || file.ContentLength == 0)
+            {
+                return Json(new { success = false, message = "Nenhum arquivo selecionado" });
+            }
+
+            // Validar extensão
+            var extension = Path.GetExtension(file.FileName)?.ToLowerInvariant();
+            if (string.IsNullOrEmpty(extension) || !AllowedImageExtensions.Contains(extension))
+            {
+                return Json(new { success = false, message = $"Formato não permitido. Use: {string.Join(", ", AllowedImageExtensions)}" });
+            }
+
+            // Validar tamanho
+            if (file.ContentLength > MaxFileSize)
+            {
+                return Json(new { success = false, message = $"Arquivo muito grande. Máximo: {MaxFileSize / 1024 / 1024}MB" });
+            }
+
+            // Verificar se a variante pertence à organização
+            var variant = await Context.ProductVariants
+                .FirstOrDefaultAsync(v => v.Id == variantId && v.OrganizationId == CurrentOrganizationId && v.DeletedAt == null);
+
+            if (variant == null)
+            {
+                return Json(new { success = false, message = "Variante não encontrada" });
+            }
+
+            try
+            {
+                // Processar imagem (redimensionar)
+                var maxWidth = int.Parse(ConfigurationManager.AppSettings["Image:MaxWidth"] ?? "800");
+                var maxHeight = int.Parse(ConfigurationManager.AppSettings["Image:MaxHeight"] ?? "800");
+                var quality = long.Parse(ConfigurationManager.AppSettings["Image:Quality"] ?? "85");
+
+                using (var processedStream = ImageProcessingService.ResizeImage(file.InputStream, maxWidth, maxHeight, quality))
+                {
+                    // Gerar nome único para o arquivo
+                    var fileName = $"products/{variant.ProductTemplateId}/variants/{variantId}/{Guid.NewGuid()}{extension}";
+                    var contentType = GetContentType(extension);
+
+                    // Upload para MinIO
+                    var url = await StorageService.UploadFileAsync(processedStream, fileName, contentType);
+
+                    // Verificar se já existem imagens para determinar SortOrder e IsMain
+                    var existingImagesCount = await Context.ProductImages
+                        .CountAsync(i => i.VariantId == variantId);
+
+                    // Criar registro no banco
+                    var productImage = new ProductImage
+                    {
+                        Id = Guid.NewGuid(),
+                        ProductTemplateId = variant.ProductTemplateId,
+                        VariantId = variantId,
+                        Url = url,
+                        AltText = altText,
+                        SortOrder = existingImagesCount,
+                        IsMain = existingImagesCount == 0, // Primeira imagem é principal
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    Context.ProductImages.Add(productImage);
+                    await Context.SaveChangesAsync();
+
+                    Log.Information("PRODUCT_IMAGE_UPLOADED: Imagem {ImageId} enviada para variante {VariantId} por usuário {UserId}",
+                        productImage.Id, variantId, CurrentUserId);
+
+                    return Json(new
+                    {
+                        success = true,
+                        image = new ProductImageViewModel
+                        {
+                            Id = productImage.Id,
+                            VariantId = variantId,
+                            Url = productImage.Url,
+                            AltText = productImage.AltText,
+                            SortOrder = productImage.SortOrder,
+                            IsMain = productImage.IsMain
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "PRODUCT_IMAGE_UPLOAD_ERROR: Erro ao enviar imagem para variante {VariantId}", variantId);
+                return Json(new { success = false, message = "Erro ao processar imagem: " + ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Remover imagem (endpoint AJAX)
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<JsonResult> DeleteVariantImage(Guid imageId)
+        {
+            if (CurrentOrganizationId == Guid.Empty)
+            {
+                return Json(new { success = false, message = "Organização não selecionada" });
+            }
+
+            var image = await Context.ProductImages
+                .Include(i => i.ProductTemplate)
+                .FirstOrDefaultAsync(i => i.Id == imageId && i.ProductTemplate.OrganizationId == CurrentOrganizationId);
+
+            if (image == null)
+            {
+                return Json(new { success = false, message = "Imagem não encontrada" });
+            }
+
+            try
+            {
+                var wasMain = image.IsMain;
+                var variantId = image.VariantId;
+
+                // Deletar do MinIO
+                await StorageService.DeleteFileAsync(image.Url);
+
+                // Remover do banco
+                Context.ProductImages.Remove(image);
+                await Context.SaveChangesAsync();
+
+                // Se era a imagem principal, definir a próxima como principal
+                if (wasMain && variantId.HasValue)
+                {
+                    var nextImage = await Context.ProductImages
+                        .Where(i => i.VariantId == variantId)
+                        .OrderBy(i => i.SortOrder)
+                        .FirstOrDefaultAsync();
+
+                    if (nextImage != null)
+                    {
+                        nextImage.IsMain = true;
+                        nextImage.UpdatedAt = DateTime.UtcNow;
+                        await Context.SaveChangesAsync();
+                    }
+                }
+
+                Log.Information("PRODUCT_IMAGE_DELETED: Imagem {ImageId} deletada por usuário {UserId}", imageId, CurrentUserId);
+
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "PRODUCT_IMAGE_DELETE_ERROR: Erro ao deletar imagem {ImageId}", imageId);
+                return Json(new { success = false, message = "Erro ao deletar imagem: " + ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Definir imagem como principal (endpoint AJAX)
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<JsonResult> SetMainImage(Guid imageId)
+        {
+            if (CurrentOrganizationId == Guid.Empty)
+            {
+                return Json(new { success = false, message = "Organização não selecionada" });
+            }
+
+            var image = await Context.ProductImages
+                .Include(i => i.ProductTemplate)
+                .FirstOrDefaultAsync(i => i.Id == imageId && i.ProductTemplate.OrganizationId == CurrentOrganizationId);
+
+            if (image == null)
+            {
+                return Json(new { success = false, message = "Imagem não encontrada" });
+            }
+
+            if (!image.VariantId.HasValue)
+            {
+                return Json(new { success = false, message = "Imagem não está associada a uma variante" });
+            }
+
+            try
+            {
+                // Remover flag de todas as imagens da variante
+                var variantImages = await Context.ProductImages
+                    .Where(i => i.VariantId == image.VariantId)
+                    .ToListAsync();
+
+                foreach (var img in variantImages)
+                {
+                    img.IsMain = img.Id == imageId;
+                    img.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await Context.SaveChangesAsync();
+
+                Log.Information("PRODUCT_IMAGE_SET_MAIN: Imagem {ImageId} definida como principal para variante {VariantId} por usuário {UserId}",
+                    imageId, image.VariantId, CurrentUserId);
+
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "PRODUCT_IMAGE_SET_MAIN_ERROR: Erro ao definir imagem {ImageId} como principal", imageId);
+                return Json(new { success = false, message = "Erro ao definir imagem principal: " + ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Reordenar imagens (endpoint AJAX)
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<JsonResult> ReorderImages(List<Guid> imageIds)
+        {
+            if (CurrentOrganizationId == Guid.Empty)
+            {
+                return Json(new { success = false, message = "Organização não selecionada" });
+            }
+
+            if (imageIds == null || !imageIds.Any())
+            {
+                return Json(new { success = false, message = "Lista de imagens vazia" });
+            }
+
+            try
+            {
+                // Buscar todas as imagens
+                var images = await Context.ProductImages
+                    .Include(i => i.ProductTemplate)
+                    .Where(i => imageIds.Contains(i.Id) && i.ProductTemplate.OrganizationId == CurrentOrganizationId)
+                    .ToListAsync();
+
+                if (images.Count != imageIds.Count)
+                {
+                    return Json(new { success = false, message = "Algumas imagens não foram encontradas" });
+                }
+
+                // Atualizar ordem
+                for (int i = 0; i < imageIds.Count; i++)
+                {
+                    var image = images.FirstOrDefault(img => img.Id == imageIds[i]);
+                    if (image != null)
+                    {
+                        image.SortOrder = i;
+                        image.UpdatedAt = DateTime.UtcNow;
+                    }
+                }
+
+                await Context.SaveChangesAsync();
+
+                Log.Information("PRODUCT_IMAGES_REORDERED: {Count} imagens reordenadas por usuário {UserId}",
+                    imageIds.Count, CurrentUserId);
+
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "PRODUCT_IMAGE_REORDER_ERROR: Erro ao reordenar imagens");
+                return Json(new { success = false, message = "Erro ao reordenar imagens: " + ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Obtém o Content-Type baseado na extensão do arquivo
+        /// </summary>
+        private string GetContentType(string extension)
+        {
+            switch (extension.ToLowerInvariant())
+            {
+                case ".jpg":
+                case ".jpeg":
+                    return "image/jpeg";
+                case ".png":
+                    return "image/png";
+                case ".gif":
+                    return "image/gif";
+                case ".webp":
+                    return "image/webp";
+                default:
+                    return "application/octet-stream";
+            }
+        }
+
+        /// <summary>
+        /// Processa e salva imagens do produto durante a criação
+        /// </summary>
+        private async Task ProcessProductImages(ProductTemplate template, ProductFormViewModel model, IEnumerable<HttpPostedFileBase> productImages, HttpFileCollectionBase allFiles)
+        {
+            try
+            {
+                var maxWidth = int.Parse(ConfigurationManager.AppSettings["Image:MaxWidth"] ?? "800");
+                var maxHeight = int.Parse(ConfigurationManager.AppSettings["Image:MaxHeight"] ?? "800");
+                var quality = long.Parse(ConfigurationManager.AppSettings["Image:Quality"] ?? "85");
+
+                if (model.ProductType == ProductType.Simple)
+                {
+                    // Produto simples - imagens vão para a única variante
+                    var variant = template.Variants.First();
+                    var images = productImages?.Where(f => f != null && f.ContentLength > 0).ToList() ?? new List<HttpPostedFileBase>();
+
+                    await SaveVariantImages(template.Id, variant.Id, images, maxWidth, maxHeight, quality);
+                }
+                else
+                {
+                    // Produto configurável - buscar imagens de cada variante pelo padrão do nome do input
+                    var variantsList = template.Variants.ToList();
+
+                    for (int i = 0; i < variantsList.Count; i++)
+                    {
+                        var variant = variantsList[i];
+                        var inputKey = $"VariantImages[{i}]";
+
+                        // Coletar arquivos para esta variante
+                        var variantImages = new List<HttpPostedFileBase>();
+                        for (int j = 0; j < allFiles.Count; j++)
+                        {
+                            var key = allFiles.GetKey(j);
+                            if (key == inputKey || key.StartsWith(inputKey))
+                            {
+                                var file = allFiles[j];
+                                if (file != null && file.ContentLength > 0)
+                                {
+                                    variantImages.Add(file);
+                                }
+                            }
+                        }
+
+                        if (variantImages.Any())
+                        {
+                            await SaveVariantImages(template.Id, variant.Id, variantImages, maxWidth, maxHeight, quality);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log erro mas não impede a criação do produto
+                Log.Error(ex, "PRODUCT_IMAGE_PROCESS_ERROR: Erro ao processar imagens do produto {ProductId}", template.Id);
+            }
+        }
+
+        /// <summary>
+        /// Salva imagens para uma variante específica
+        /// </summary>
+        private async Task SaveVariantImages(Guid templateId, Guid variantId, List<HttpPostedFileBase> images, int maxWidth, int maxHeight, long quality)
+        {
+            for (int i = 0; i < images.Count; i++)
+            {
+                var file = images[i];
+
+                // Validar extensão
+                var extension = Path.GetExtension(file.FileName)?.ToLowerInvariant();
+                if (string.IsNullOrEmpty(extension) || !AllowedImageExtensions.Contains(extension))
+                {
+                    Log.Warning("PRODUCT_IMAGE_SKIP: Formato não permitido: {Extension}", extension);
+                    continue;
+                }
+
+                // Validar tamanho
+                if (file.ContentLength > MaxFileSize)
+                {
+                    Log.Warning("PRODUCT_IMAGE_SKIP: Arquivo muito grande: {Size} bytes", file.ContentLength);
+                    continue;
+                }
+
+                try
+                {
+                    using (var processedStream = ImageProcessingService.ResizeImage(file.InputStream, maxWidth, maxHeight, quality))
+                    {
+                        // Gerar nome único para o arquivo
+                        var fileName = $"products/{templateId}/variants/{variantId}/{Guid.NewGuid()}{extension}";
+                        var contentType = GetContentType(extension);
+
+                        // Upload para MinIO
+                        var url = await StorageService.UploadFileAsync(processedStream, fileName, contentType);
+
+                        // Criar registro no banco
+                        var productImage = new ProductImage
+                        {
+                            Id = Guid.NewGuid(),
+                            ProductTemplateId = templateId,
+                            VariantId = variantId,
+                            Url = url,
+                            SortOrder = i,
+                            IsMain = i == 0, // Primeira imagem é principal
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+
+                        Context.ProductImages.Add(productImage);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "PRODUCT_IMAGE_UPLOAD_ERROR: Erro ao enviar imagem {Index} para variante {VariantId}", i, variantId);
+                }
+            }
+
+            await Context.SaveChangesAsync();
+        }
+
+        #endregion
     }
 }
